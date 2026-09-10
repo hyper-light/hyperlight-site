@@ -17,9 +17,9 @@ export default function Home() {
       <div className="ecosystem-strip">
         <div className="container ecosystem-inner">
           <span className="eyebrow">
-            One shared direction.
+            Modular platform.
             <br />
-            Many ways forward.
+            One ecosystem.
           </span>
           <div className="ecosystem-projects">
             {projects.map((project) => (
@@ -47,9 +47,9 @@ export default function Home() {
           </div>
           <div className="section-heading-aside">
             <p>
-              Understand your code. Coordinate the work.
+              Components and tools for agents.
               <br />
-              Give every agent room to build.
+              Build your platform.
             </p>
             <Link className="text-link" href="/projects">
               All projects{" "}
