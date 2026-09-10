@@ -38,39 +38,43 @@ export default function AboutPage() {
           </div>
         </div>
         <div className="prose">
-          <h2>We make tools for the work itself.</h2>
+          <h2>Make tools and platform that scale.</h2>
           <p>
-            There’s a lot happening between an idea and working software.
-            Finding the right code. Sharing a task. Checking whether the result
-            holds up. Keeping one person’s—or one agent’s—changes from getting
-            tangled up with everyone else’s.
+            Agents and artificial intelligence are changing everything, 
+            including how we think about and run software. Traditional cloud
+            solutions designed for human-scale usage actively degrade and break
+            under agentic usage patterns and scale.
           </p>
           <p>
-            Those are the problems Hyperlight works on. We build focused tools,
-            each with a clear job, and pay attention to the boundaries between
-            them.
+            Hyperlight builds tools and technologies that handle this scale by nature of their construction,
+            while also running just as efficiently on your local laptop at home. We
+            pride ourselves on ruthless optimization, minimal config, and being able
+            to blend the best of well-tested distributed computational techniques with
+            cutting edge approaches to auto-scaling, consensus, and more.
           </p>
-          <h2>Agents and humans deserve the same clarity.</h2>
+          <h2>One platform for every agent.</h2>
           <p>
-            A useful tool should be easy to ask, honest about what it knows, and
-            clear about what happened. That matters whether the caller is a
-            person at a terminal or an agent working through an API.
-          </p>
-          <p>
-            We care about inspectable evidence, explicit control, and workflows
-            you can understand without guessing what’s happening underneath.
-          </p>
-          <h2>A laptop is a good place to start.</h2>
-          <p>
-            Running something locally shouldn’t feel like using a cut-down
-            version of the real thing. We start with useful local workflows,
-            then work through what it takes for those ideas to hold up across
-            more processes, machines, and people.
+            The best platforms are workload agnostic, and the same goes for any agentic platform. We
+            build tools and technology that support any agent, whether by adopting well-established 
+            open source standards like OCI or FUSE or industry leading approaches like AWS's IAM access 
+            and  identity management.
           </p>
           <p>
-            Some of our projects are available now. Others are still being
-            designed. We’ll tell you which is which, and write about what we
-            learn along the way.
+            We also take inspiration from the legendary Solid State Logic of Oxford London and their "Lego Studio"
+            approach. We build tools that meet your agents where they're at and don't force monolithic adoption or 
+            ecosystem lockin. Utilizing OSS technologies and well-established APIs, Hyperlight's ecosystem of tooling
+            allows you to build the platform <i>you</i> need by integrating with what you have.
+          </p>
+          <h2>Open forever, open always.</h2>
+          <p>
+            We recognize that artificial intelligence offers significant economic opportunity, and there's ample
+            temptation to default to closed-source. We believe in the power of FOSS - Hyperlight is not
+            a company, it is a project designed to provide novel solutions to the infrastructural and platform problems
+            inherent to the agentic future of software.
+          </p>
+          <p>
+            Hyperlight is a work in progress and is constantly evolving. Learn
+            with us along the way.
           </p>
           <div className="flex flex-wrap gap-3 pt-5">
             <Button asChild>

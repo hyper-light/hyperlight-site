@@ -1695,6 +1695,34 @@ html[data-motion="paused"] .study-stage {
   border-radius: 50%;
   transform: rotate(-35deg) scaleX(0.55) rotate(calc(var(--i) * 5deg));
   opacity: calc(0.3 + var(--i) * 0.06);
+  animation:
+    optic-breathe 14s ease-in-out infinite,
+    optic-chroma 18s linear infinite;
+  animation-delay: calc(var(--i) * -0.55s), calc(var(--i) * -0.9s);
+}
+/* Neighboring rings follow the same breath with a small, continuous phase offset. */
+@keyframes optic-breathe {
+  0%,
+  100% {
+    transform: translateY(-4px) rotate(-38deg) scaleX(0.55)
+      rotate(calc(var(--i) * 5deg));
+  }
+  50% {
+    transform: translateY(4px) rotate(-28deg) scaleX(0.66)
+      rotate(calc(var(--i) * 5deg + 6deg));
+  }
+}
+@keyframes optic-chroma {
+  0%,
+  100% {
+    border-color: #627c7b #a39db9 #7d91a6 #505a67;
+  }
+  33.333% {
+    border-color: #a39285 #687e89 #819ea5 #807695;
+  }
+  66.667% {
+    border-color: #737a91 #85a59e #958997 #747d8d;
+  }
 }
 .not-found {
   padding-block: 140px;
@@ -2368,6 +2396,9 @@ html[data-motion="paused"] .study-stage {
   .about-aside {
     display: none;
   }
+  .about-optic span {
+    animation-play-state: paused;
+  }
   .not-found {
     padding-block: 100px;
   }
@@ -2418,6 +2449,9 @@ html[data-motion="paused"] .study-stage {
   [data-visible="false"] {
     opacity: 1 !important;
     transform: none !important;
+  }
+  .about-optic span {
+    animation: none;
   }
 }
 @media (prefers-contrast: more) {
