@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { Project } from "@/lib/projects";
 import { ProjectMark } from "@/components/project-mark";
 import { ProjectVisual } from "@/components/project-visual";
+import { ProjectCardSurface } from "@/components/project-card-surface";
 
 export function Status({ status }: { status: Project["status"] }) {
   return (
@@ -17,7 +18,7 @@ export function Status({ status }: { status: Project["status"] }) {
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
-    <article className="project-card group">
+    <ProjectCardSurface>
       <Link
         href={`/projects/${project.slug}`}
         className="project-card-link"
@@ -50,6 +51,6 @@ export function ProjectCard({ project }: { project: Project }) {
           Source <ArrowUpRight size={12} />
         </a>
       </div>
-    </article>
+    </ProjectCardSurface>
   );
 }

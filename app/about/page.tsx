@@ -18,14 +18,14 @@ export default function AboutPage() {
           <span className="spectrum-rule" /> A little about Hyperlight
         </span>
         <h1>
-          More room
+          Infrastructure and tools
           <br />
-          to do good work.
+          for every agent.
         </h1>
         <p>
-          Infrastructure for agents and humans,
+          An open-source, modular platform for agents.
           <br />
-          any scale, any place.
+          Any scale, anywhere.
         </p>
       </div>
       <div className="about-content">

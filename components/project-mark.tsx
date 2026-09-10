@@ -15,6 +15,7 @@ export function ProjectMark({
         height={Number(props.height ?? 32)}
         className={props.className}
         unoptimized
+        data-project-mark={slug}
       />
     );
   return (
@@ -28,6 +29,7 @@ export function ProjectMark({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      data-project-mark={slug}
       {...props}
     >
       {slug === "vorpal" && (

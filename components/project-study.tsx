@@ -5,15 +5,17 @@ import { ProjectMark } from "@/components/project-mark";
 import { StudyPreview } from "@/components/study-artwork";
 import type { StudyId } from "@/lib/studies";
 
-/** Catalog previews load near the viewport and remain still; detail art can move. */
+/** Previews load near the viewport, then keep their pose between interactions. */
 export function ProjectStudy({
   id,
   paused,
   large,
+  active = false,
 }: {
   id: StudyId;
   paused: boolean;
   large: boolean;
+  active?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(large);
@@ -37,7 +39,7 @@ export function ProjectStudy({
       {ready ? (
         <StudyPreview
           id={id}
-          paused={paused || !large}
+          paused={paused || (!large && !active)}
           className="project-study-svg"
         />
       ) : (

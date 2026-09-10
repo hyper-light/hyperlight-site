@@ -19,7 +19,7 @@ export default function BlogPage() {
         </span>
         <h1>Building Hyperlight.</h1>
         <p>
-          Updates on the tools we’re making and what we learn along the way.
+          Updates and what we've learned along the way.
         </p>
         <a href="/feed.xml" className="text-link">
           <Rss size={14} /> Follow via RSS

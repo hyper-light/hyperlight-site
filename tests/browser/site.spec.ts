@@ -214,11 +214,18 @@ test("device reduced motion produces a static illustration", async ({
   await expect(
     page.getByRole("button", { name: "Reduced motion", exact: true }),
   ).toBeDisabled();
-  const pausedAnimations = await page
-    .locator(".graph-trace")
-    .first()
-    .evaluate((node) => getComputedStyle(node).animationPlayState);
-  expect(pausedAnimations).toBe("paused");
+  const art = page.locator('.study-gallery [data-study="hyperlight"] > svg');
+  await expect(art).toBeVisible();
+  const pose = await art.innerHTML();
+  await page.waitForTimeout(250);
+  expect(
+    await art.innerHTML(),
+    "The full study should retain its pose under reduced motion",
+  ).toBe(pose);
+  await expect(page.locator(".hero-eyebrow .spectrum-rule")).toHaveCSS(
+    "animation-play-state",
+    "paused",
+  );
 });
 
 test("new projects expose routes, metadata, repositories, and sitemap entries", async ({

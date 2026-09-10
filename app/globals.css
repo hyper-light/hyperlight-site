@@ -227,13 +227,17 @@
   align-items: center;
 }
 .desktop-nav {
-  gap: 34px;
+  align-self: stretch;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 252px;
+  flex-shrink: 0;
   margin-left: 40px;
 }
 .desktop-nav a {
   min-height: 44px;
   display: flex;
   align-items: center;
+  justify-content: center;
   position: relative;
   color: #a5a5ac;
   font-size: 13px;
@@ -246,11 +250,14 @@
 .desktop-nav a[aria-current="page"]::after {
   content: "";
   position: absolute;
-  bottom: -17px;
+  pointer-events: none;
+  bottom: -1px;
   left: 0;
   right: 0;
   height: 1px;
   background: var(--prism);
+  background-size: 250% 100%;
+  animation: prism-current 6s ease-in-out infinite alternate;
 }
 .header-github {
   align-items: center;
@@ -580,8 +587,14 @@
   z-index: 2;
   height: 1px;
   background: var(--prism);
+  background-size: 250% 100%;
+  animation: prism-current 4.8s ease-in-out infinite alternate;
+  animation-play-state: paused;
   opacity: 0;
   transition: opacity 0.4s;
+}
+.project-card[data-active="true"]::before {
+  animation-play-state: running;
 }
 .project-card:hover,
 .project-card:focus-within {
@@ -615,11 +628,6 @@
   background-size: 17px 17px;
   mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
 }
-.project-visual > svg {
-  height: 100%;
-  width: 100%;
-  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-}
 .project-study {
   position: absolute;
   inset: 0;
@@ -646,11 +654,8 @@
   place-items: center;
   color: #949aa6;
 }
-.project-card:hover .project-study-svg {
+.project-card[data-active="true"] .project-study-svg {
   transform: translate(-50%, -50%) scale(1.04);
-}
-.project-card:hover .project-visual > svg {
-  transform: scale(1.04);
 }
 .project-visual::after {
   content: "";
@@ -695,7 +700,7 @@
     transform 0.25s,
     color 0.25s;
 }
-.project-card:hover .card-arrow {
+.project-card:is(:hover, :focus-within) .card-arrow {
   color: #eee;
   transform: translate(2px, -2px);
 }
@@ -765,29 +770,6 @@
   background: transparent;
   border: 1px solid #a8a1b8;
 }
-.graph-trace {
-  animation: graph-flow 7s linear infinite;
-}
-.graph-trace-two {
-  animation-delay: -3.5s;
-}
-.project-card .graph-trace,
-.project-card .focal-orbit {
-  animation-play-state: paused;
-}
-.focal-orbit {
-  transform-origin: 180px 100px;
-  animation: orbit 26s linear infinite;
-}
-.slate-plane {
-  animation: plane-float 9s ease-in-out infinite;
-}
-.slate-plane-1 {
-  animation-delay: -0.6s;
-}
-.slate-plane-2 {
-  animation-delay: -1.2s;
-}
 .quiet-art {
   height: 100%;
   min-height: 180px;
@@ -809,25 +791,6 @@
   width: 160px;
   height: 160px;
   border-color: #1e2026;
-}
-@keyframes graph-flow {
-  to {
-    stroke-dashoffset: -430;
-  }
-}
-@keyframes orbit {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes plane-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
 }
 
 /* Principles */
@@ -2455,10 +2418,6 @@ html[data-motion="paused"] .study-stage {
   [data-visible="false"] {
     opacity: 1 !important;
     transform: none !important;
-  }
-  .graph-trace {
-    stroke-dasharray: none;
-    opacity: 0.5;
   }
 }
 @media (prefers-contrast: more) {

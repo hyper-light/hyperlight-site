@@ -303,6 +303,7 @@ test("new project previews fit their cards and stay still while detail studies a
   for (const id of newStudyIds) {
     const preview = page.locator(`.project-card [data-project-study="${id}"]`);
     await preview.scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
     const art = preview.locator(":scope > svg");
     await expect(
       art,

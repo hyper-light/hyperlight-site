@@ -17,13 +17,13 @@ export default function ProjectsPage() {
           <span className="spectrum-rule" /> The Hyperlight projects
         </span>
         <h1>
-          Built for the work
+          Built for the next
           <br />
-          you want to do.
+          generation of software.
         </h1>
         <p>
-          Tools with a clear purpose, from the first line of code to the systems
-          around it. Some are ready to use. Others are taking shape.
+          The world's first modular agentic platform, built to work anywhere
+          for every agent.
         </p>
       </div>
       <ProjectExplorer projects={projects} />

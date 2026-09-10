@@ -40,7 +40,7 @@ export function Header() {
             <Brand />
           </Link>
           <nav
-            className="desktop-nav hidden md:flex"
+            className="desktop-nav hidden md:grid"
             aria-label="Main navigation"
           >
             {navigation.map(({ href, label }) => (
