@@ -51,8 +51,11 @@ export function useStudyMotion({
     };
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        visible = entry.isIntersecting;
+      (entries) => {
+        // A reflow can deliver several records for this SVG. Use its final state.
+        const latest = entries.at(-1);
+        if (!latest) return;
+        visible = latest.isIntersecting;
         synchronize();
       },
       { rootMargin: "32px" },

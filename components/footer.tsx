@@ -15,7 +15,7 @@ export function Footer() {
             <p>
               Independent tools.
               <br />
-              Considered from every angle.
+              Made for every agent.
             </p>
           </div>
           <nav aria-label="Footer navigation">

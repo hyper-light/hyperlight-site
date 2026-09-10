@@ -71,7 +71,11 @@ Motion should clarify a transition or bring a quiet detail to life. Respect `pre
 
 The controls in `components/ui/` are locally owned Radix wrappers styled with Tailwind, following the shadcn approach. The hero is an original animated SVG; the rest of the illustrations use SVG and CSS. The hero and footer motion controls pause ambient animation throughout the site. A device's reduced-motion setting takes precedence.
 
-The hero's back and next arrows cycle through eight light studies: Hyperlight plus one for each project. Arrow keys also work when a control has focus. Project studies load on selection. Each shares visibility-aware motion controls and has a static reduced-motion state. The components live in `components/studies/`; the collection and labels live in `components/study-gallery.tsx`.
+The hero's back and next arrows cycle through fifteen light studies: Hyperlight plus one for each of the fourteen projects. Arrow keys also work when a control has focus. Project studies load on selection. Each shares visibility-aware motion controls and has a static reduced-motion state. The components live in `components/studies/`; the collection and labels live in `lib/studies.ts`, and `components/study-artwork.tsx` maps them to lazy-loaded components. The counter is derived from that collection.
+
+Project detail pages reuse each project's animated study. Catalog previews load near the viewport and stay still, so browsing the collection doesn't run a whole gallery of frame loops on a phone. To add a project, update `lib/projects.ts`, add its metadata to `lib/studies.ts`, register its component in `components/study-artwork.tsx`, and draw its mark in `components/project-mark.tsx`. The project routes, filters, counts, navigation, and sitemap follow the data. Registry tests catch missing studies, duplicate IDs, and excluded repositories.
+
+The September 2026 expansion is documented in `docs/project-inventory.md`. It includes the Hecate creation-date cutoff, the exclusion of every Sylk-related repository, Cocoa, and mkfst-py, and first-party sources for each project's purpose and stage. Keep compatibility and security claims framed as design intentions until the repositories establish implemented behavior.
 
 The Slates mark is the repository's existing source-and-workspace tablet design. The Hyperlight mark is an original folded optical contour; a reusable SVG is in `public/brand/`. See `docs/brand-research.md` for the primary-source similarity review and its limits.
 

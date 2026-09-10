@@ -22,14 +22,12 @@ export default function Home() {
             Many ways forward.
           </span>
           <div className="ecosystem-projects">
-            {projects
-              .filter((p) => p.slug !== "mantle" && p.slug !== "hyperscale")
-              .map((project) => (
-                <Link key={project.slug} href={`/projects/${project.slug}`}>
-                  <ProjectMark slug={project.slug} width={22} height={22} />
-                  <span>{project.name}</span>
-                </Link>
-              ))}
+            {projects.map((project) => (
+              <Link key={project.slug} href={`/projects/${project.slug}`}>
+                <ProjectMark slug={project.slug} width={22} height={22} />
+                <span>{project.name}</span>
+              </Link>
+            ))}
           </div>
         </div>
       </div>

@@ -3,6 +3,8 @@
 import { ProjectMark } from "@/components/project-mark";
 import { SlatesStudy } from "@/components/studies/slates";
 import { useMotionPreference } from "@/components/motion-provider";
+import { ProjectStudy } from "@/components/project-study";
+import { getStudy } from "@/lib/studies";
 
 export function ProjectVisual({
   slug,
@@ -12,13 +14,18 @@ export function ProjectVisual({
   large?: boolean;
 }) {
   const { paused } = useMotionPreference();
+  const study = getStudy(slug);
+  const fullStudy =
+    study && (large || !["vorpal", "focal", "slates"].includes(slug));
   return (
     <div
       className={`project-visual visual-${slug}${large ? " visual-large" : ""}`}
       aria-hidden="true"
     >
       <div className="visual-grid" />
-      {slug === "vorpal" ? (
+      {fullStudy ? (
+        <ProjectStudy id={study.id} paused={paused} large={large} />
+      ) : slug === "vorpal" ? (
         <svg viewBox="0 0 360 200" fill="none" className="graph-art">
           <path
             d="M-20 101H101L154 48H240L290-2M101 101l53 53h86l50 48M101 101h160l46-47h73M240 154l45-45h95"
@@ -104,7 +111,7 @@ export function ProjectVisual({
           </g>
         </svg>
       ) : slug === "slates" ? (
-        <SlatesStudy paused={paused} className="slates-art" />
+        <SlatesStudy paused className="slates-art" />
       ) : (
         <div className="quiet-art">
           <span />
@@ -121,7 +128,9 @@ export function ProjectVisual({
               ? "ISOLATE → INTEGRATE"
               : slug === "hyperscale"
                 ? "SCENARIO → FEEDBACK"
-                : "HYPERLIGHT / RESEARCH"}
+                : study
+                  ? study.title.toUpperCase()
+                  : "HYPERLIGHT / RESEARCH"}
       </span>
     </div>
   );

@@ -107,7 +107,17 @@
   width: 30px;
   height: 2px;
   background: var(--prism);
+  background-size: 250% 100%;
+  animation: prism-current 6s ease-in-out infinite alternate;
   flex: 0 0 auto;
+}
+@keyframes prism-current {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
 }
 .spectral-dot {
   display: inline-block;
@@ -463,6 +473,7 @@
 }
 .ecosystem-inner {
   min-height: 103px;
+  padding-block: 24px;
   display: flex;
   align-items: center;
   gap: 72px;
@@ -475,11 +486,11 @@
   letter-spacing: 0.02em;
 }
 .ecosystem-projects {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   flex: 1;
   align-items: center;
-  justify-content: space-between;
-  gap: 22px;
+  gap: 10px 22px;
 }
 .ecosystem-projects a {
   display: inline-flex;
@@ -491,6 +502,10 @@
   font-weight: 480;
   letter-spacing: -0.4px;
   transition: color 0.2s;
+}
+.ecosystem-projects a > svg,
+.ecosystem-projects a > img {
+  flex-shrink: 0;
 }
 .ecosystem-projects a:hover {
   color: #eee;
@@ -604,6 +619,35 @@
   height: 100%;
   width: 100%;
   transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.project-study {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.project-study-svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 125%;
+  overflow: visible;
+  transform: translate(-50%, -50%);
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.visual-large .project-study-svg {
+  height: 112%;
+}
+.study-preview-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #949aa6;
+}
+.project-card:hover .project-study-svg {
+  transform: translate(-50%, -50%) scale(1.04);
 }
 .project-card:hover .project-visual > svg {
   transform: scale(1.04);
@@ -726,6 +770,10 @@
 }
 .graph-trace-two {
   animation-delay: -3.5s;
+}
+.project-card .graph-trace,
+.project-card .focal-orbit {
+  animation-play-state: paused;
 }
 .focal-orbit {
   transform-origin: 180px 100px;
@@ -1914,7 +1962,17 @@ html[data-motion="paused"] .study-stage {
   .study-stage .hero-sculpture {
     transform: translate(-50%, -50%);
   }
-  .study-stage[data-study="hyperscale"] .hero-sculpture {
+  .study-stage:is(
+      [data-study="hyperscale"],
+      [data-study="hex"],
+      [data-study="shards"],
+      [data-study="athame"],
+      [data-study="reliquary"],
+      [data-study="hoard"],
+      [data-study="quiver"],
+      [data-study="clarion"]
+    )
+    .hero-sculpture {
     width: 100%;
   }
   .study-controls {
@@ -2352,6 +2410,9 @@ html[data-motion="paused"] .study-stage {
   }
 }
 @media (max-width: 374px) {
+  .ecosystem-projects {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .container {
     width: calc(100% - 32px);
   }
