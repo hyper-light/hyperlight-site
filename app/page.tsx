@@ -17,9 +17,9 @@ export default function Home() {
       <div className="ecosystem-strip">
         <div className="container ecosystem-inner">
           <span className="eyebrow">
-            Modular platform.
+            Many tools.
             <br />
-            One ecosystem.
+            One platform.
           </span>
           <div className="ecosystem-projects">
             {projects.map((project) => (

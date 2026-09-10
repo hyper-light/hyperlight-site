@@ -10,8 +10,7 @@ export function Hero() {
     <section className="hero container" aria-labelledby="hero-title">
       <div className="hero-copy">
         <div className="eyebrow hero-eyebrow">
-          <span className="spectrum-rule" /> Infrastructure for agents and
-          humans
+          <span className="spectrum-rule" /> Infrastructure for every agent
         </div>
         <h1 id="hero-title">
           Any scale.
@@ -36,8 +35,7 @@ export function Hero() {
           </Button>
         </div>
         <div className="hero-footnote">
-          <span className="tiny-cross">+</span> Built independent. Built for
-          agents.
+          <span className="tiny-cross">+</span>Built independent. Built for you.
         </div>
       </div>
       <StudyGallery />

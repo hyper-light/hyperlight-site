@@ -354,18 +354,14 @@ test("Mantle's rendered material stays continuous across the major horizon cross
       // Native captures of the bug jumped 0.74–0.76 RGB levels; ordinary nearby
       // moving frames measured 0.26–0.40 at this exact card size.
       if (difference > 0.6) {
-        await test
-          .info()
-          .attach(`before-${previousTime.toFixed(3)}`, {
-            body: previous,
-            contentType: "image/png",
-          });
-        await test
-          .info()
-          .attach(`after-${currentTime.toFixed(3)}`, {
-            body: current,
-            contentType: "image/png",
-          });
+        await test.info().attach(`before-${previousTime.toFixed(3)}`, {
+          body: previous,
+          contentType: "image/png",
+        });
+        await test.info().attach(`after-${currentTime.toFixed(3)}`, {
+          body: current,
+          contentType: "image/png",
+        });
       }
       expect(
         difference,
