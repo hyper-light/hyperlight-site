@@ -595,6 +595,7 @@
 }
 .project-card[data-active="true"]::before {
   animation-play-state: running;
+  opacity: 0.7;
 }
 .project-card:hover,
 .project-card:focus-within {

@@ -73,7 +73,7 @@ The controls in `components/ui/` are locally owned Radix wrappers styled with Ta
 
 The hero's back and next arrows cycle through fifteen light studies: Hyperlight plus one for each of the fourteen projects. Arrow keys also work when a control has focus. Project studies load on selection. Each shares visibility-aware motion controls and has a static reduced-motion state. The components live in `components/studies/`; the collection and labels live in `lib/studies.ts`, and `components/study-artwork.tsx` maps them to lazy-loaded components. The counter is derived from that collection.
 
-Project detail pages and cards reuse the same studies as the landing gallery. Card previews load near the viewport and animate while the card is hovered or contains keyboard focus; they hold their current pose when the interaction ends. Their prismatic edge follows the same interaction. Global pause and reduced motion take precedence, and touch links still open with a single tap. `components/project-card-surface.tsx` owns this interaction without running the whole collection on a phone. All project marks come from `components/project-mark.tsx` across the landing page, catalog, and details. To add a project, update `lib/projects.ts`, add its metadata to `lib/studies.ts`, register its component in `components/study-artwork.tsx`, and draw its mark in `components/project-mark.tsx`. The project routes, filters, counts, navigation, and sitemap follow the data. Registry tests catch missing studies, duplicate IDs, and excluded repositories.
+Project detail pages and cards reuse the same studies as the landing gallery. Card previews load near the viewport. On desktop, they animate while hovered or containing keyboard focus; on touch devices and compact layouts, they animate as they scroll into view. Their prismatic edge follows the same activation. Cards pause offscreen or in a hidden tab, preserving their pose for the next visit. Global pause and reduced motion take precedence, and touch links still open with a single tap. `components/project-card-surface.tsx` owns this interaction without running the whole collection on a phone. All project marks come from `components/project-mark.tsx` across the landing page, catalog, and details. To add a project, update `lib/projects.ts`, add its metadata to `lib/studies.ts`, register its component in `components/study-artwork.tsx`, and draw its mark in `components/project-mark.tsx`. The project routes, filters, counts, navigation, and sitemap follow the data. Registry tests catch missing studies, duplicate IDs, and excluded repositories.
 
 The September 2026 expansion is documented in `docs/project-inventory.md`. It includes the Hecate creation-date cutoff, the exclusion of every Sylk-related repository, Cocoa, and mkfst-py, and first-party sources for each project's purpose and stage. Keep compatibility and security claims framed as design intentions until the repositories establish implemented behavior.
 
@@ -87,6 +87,13 @@ npm run test:e2e
 ```
 
 The browser suite covers mobile and desktop layouts, project and article searches, keyboard navigation, animation controls, reduced motion, button contrast, and automated accessibility checks. It reuses a local server when one is running. To use an installed Chrome instead, run `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome npm run test:e2e`.
+
+The card controller reconciles native hover and focus after hydration and viewport/tab restoration, so interactions that precede JavaScript are not lost. The motion regression suite covers that timing, sustained playback, scroll entry/exit, touch activation, and pause/reduced-motion overrides across Chromium, Firefox, and WebKit (including touch WebKit):
+
+```sh
+npx playwright install chromium firefox webkit
+npm run test:e2e:motion
+```
 
 Run `npm run format` to format source and content. The production build uses Next.js's Webpack compiler; development uses Turbopack.
 

@@ -11,6 +11,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "post": "node --import tsx scripts/new-post.ts",
     "test:e2e": "playwright test",
+    "test:e2e:motion": "playwright test --config playwright.motion.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

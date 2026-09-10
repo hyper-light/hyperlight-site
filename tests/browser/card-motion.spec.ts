@@ -48,7 +48,7 @@ async function expectStill(art: Locator, message: string) {
   return stopped;
 }
 
-async function chooseCard(page: Page, slug: string) {
+async function chooseCard(page: Page, slug: string, active = false) {
   await page.getByRole("searchbox", { name: "Search projects" }).fill(slug);
   await expect(page.locator(".project-card")).toHaveCount(1);
   const card = page.locator(".project-card");
@@ -56,7 +56,7 @@ async function chooseCard(page: Page, slug: string) {
   await card.scrollIntoViewIfNeeded();
   const art = card.locator(`[data-project-study="${slug}"] > svg`);
   await expect(art).toBeVisible();
-  await expect(card).toHaveAttribute("data-active", "false");
+  await expect(card).toHaveAttribute("data-active", String(active));
   return { card, art };
 }
 
@@ -114,15 +114,16 @@ test("Hoard's actual study and prismatic rule animate on hover and freeze on lea
   ).not.toBe(idleMarker);
 });
 
-test("every catalog card renders its full study and remains still when idle", async ({
+test("every catalog card renders its full study with modality-appropriate motion", async ({
   page,
+  isMobile,
 }) => {
   test.setTimeout(90000);
   await page.goto("/projects");
   await expect(page.locator(".project-card")).toHaveCount(projects.length);
   await expect(page.locator(".graph-art, .focal-art")).toHaveCount(0);
   for (const project of projects) {
-    const { art } = await chooseCard(page, project.slug);
+    const { card, art } = await chooseCard(page, project.slug, isMobile);
     await expect(
       art,
       `${project.name} should use the full-size study renderer`,
@@ -131,10 +132,25 @@ test("every catalog card renders its full study and remains still when idle", as
       await art.locator("path,circle,ellipse,polygon,polyline,line").count(),
       `${project.name} should render the study, not the small project mark`,
     ).toBeGreaterThan(15);
-    await expectStill(
-      art,
-      `${project.name} should stay still without hover or focus`,
-    );
+    if (isMobile) {
+      const initial = await geometry(art);
+      const marker = await markerPosition(card);
+      await expect
+        .poll(() => geometry(art), {
+          message: `${project.name} should animate while visible on touch`,
+        })
+        .not.toBe(initial);
+      await expect
+        .poll(() => markerPosition(card), {
+          message: `${project.name}'s visible touch rule should animate`,
+        })
+        .not.toBe(marker);
+    } else {
+      await expectStill(
+        art,
+        `${project.name} should stay still without hover or focus on desktop`,
+      );
+    }
   }
 });
 
@@ -263,8 +279,13 @@ test("touch opens a project with one tap without a hover-only intermediate state
 }) => {
   test.skip(!isMobile, "This case exercises the mobile touch project.");
   await page.goto("/projects");
-  const { card, art } = await chooseCard(page, "hoard");
-  await expectStill(art, "Touch cards should remain still before interaction");
+  const { card, art } = await chooseCard(page, "hoard", true);
+  const initial = await geometry(art);
+  await expect
+    .poll(() => geometry(art), {
+      message: "Visible touch cards should animate before interaction",
+    })
+    .not.toBe(initial);
   await card.locator(".project-visual").tap();
   await expect(page).toHaveURL("/projects/hoard");
   await expect(

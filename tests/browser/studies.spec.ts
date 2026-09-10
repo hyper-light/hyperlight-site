@@ -288,8 +288,9 @@ test("new studies honor pause, resume, and live reduced motion", async ({
   }
 });
 
-test("new project previews fit their cards and stay still while detail studies animate", async ({
+test("new project previews fit their cards and follow input modality while details animate", async ({
   page,
+  isMobile,
 }) => {
   test.setTimeout(90000);
   const errors: string[] = [];
@@ -311,11 +312,19 @@ test("new project previews fit their cards and stay still while detail studies a
     ).toBeVisible();
     await expectArtworkInsideCard(art, id);
     const first = await fingerprint(art);
-    await page.waitForTimeout(250);
-    expect(
-      await fingerprint(art),
-      `${id} catalog preview should remain still`,
-    ).toBe(first);
+    if (isMobile) {
+      await expect
+        .poll(() => fingerprint(art), {
+          message: `${id} catalog preview should animate while visible on touch`,
+        })
+        .not.toBe(first);
+    } else {
+      await page.waitForTimeout(250);
+      expect(
+        await fingerprint(art),
+        `${id} desktop catalog preview should remain still without hover`,
+      ).toBe(first);
+    }
   }
 
   for (const id of newStudyIds) {
