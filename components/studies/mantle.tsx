@@ -10,6 +10,10 @@ const PI = Math.PI;
 const RADIUS = 207;
 const STRATA = 34;
 const CONTOURS = 69;
+const STRATA_RADII = Array.from(
+  { length: STRATA },
+  (_, i) => 83 + (i * (RADIUS - 83)) / (STRATA - 1),
+);
 type Point = { x: number; y: number; z: number };
 const fixed = (value: number) => value.toFixed(2);
 const coordinate = ({ x, y }: Point) => `${fixed(x)},${fixed(y)}`;
@@ -21,6 +25,11 @@ const CUT_LONGITUDE = -0.29;
 const TILT = -PI / 4;
 const phase = (time: number) => (time / ORBIT_SECONDS) * PI * 2;
 type Side = "back" | "front";
+
+function stratumLight(index: number, time: number) {
+  const light = 0.5 + 0.5 * Math.sin(index * 0.59 - time * 0.75);
+  return (0.16 + light * light * 0.4).toFixed(4);
+}
 
 function project(x: number, y: number, z: number): Point {
   return {
@@ -122,27 +131,11 @@ function frame(time: number) {
   const seams = Array.from({ length: 6 }, (_, i) =>
     meridian(RADIUS - (i % 3) * 2.1, i < 3 ? CUT_LONGITUDE : 1.3, time),
   );
-  const strata = Array.from({ length: STRATA }, (_, i) => {
-    const radius = 83 + (i * (RADIUS - 83)) / (STRATA - 1);
-    const points = Array.from({ length: 161 }, (_, j) => {
-      const angle = (j / 160) * PI * 2;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-      const turn = phase(time) + 0.12 + (i / (STRATA - 1) - 0.5) * 0.18;
-      return project(x * Math.cos(turn), y, -x * Math.sin(turn));
-    });
-    const light = 0.5 + 0.5 * Math.sin(i * 0.59 - time * 0.75);
-    return { points, opacity: (0.16 + light * light * 0.4).toFixed(4) };
-  });
   const layer = (side: Side) => ({
     shell: surface(time, side),
     contours: contours.map((points) => visibleLine(points, side)).join(""),
     meridians: meridians.map((points) => visibleLine(points, side)).join(""),
     seams: seams.map((points) => visibleLine(points, side)),
-    strata: strata.map(({ points, opacity }) => ({
-      d: visibleLine(points, side),
-      opacity,
-    })),
   });
   return { back: layer("back"), front: layer("front") };
 }
@@ -157,9 +150,9 @@ const elements = new WeakMap<
       contours: SVGPathElement | null;
       meridians: SVGPathElement | null;
       seams: NodeListOf<SVGPathElement>;
-      strata: NodeListOf<SVGPathElement>;
       lights: NodeListOf<SVGPathElement>;
     }>;
+    strata: NodeListOf<SVGCircleElement>;
     spectrum: SVGLinearGradientElement | null;
     stone: SVGRadialGradientElement | null;
     core: SVGRadialGradientElement | null;
@@ -172,22 +165,19 @@ function update(svg: SVGSVGElement, time: number) {
     nodes = {
       layers: (["back", "front"] as const).map((side) => {
         const group = svg.querySelector(`[data-mantle-layer="${side}"]`)!;
+        const rims = svg.querySelector(`[data-mantle-rims="${side}"]`)!;
         return {
           side,
           shell: group.querySelector<SVGPathElement>("[data-mantle-shell]"),
-          contours: group.querySelector<SVGPathElement>(
-            "[data-mantle-contour]",
-          ),
-          meridians: group.querySelector<SVGPathElement>(
+          contours: rims.querySelector<SVGPathElement>("[data-mantle-contour]"),
+          meridians: rims.querySelector<SVGPathElement>(
             "[data-mantle-meridian]",
           ),
-          seams: group.querySelectorAll<SVGPathElement>("[data-mantle-edge]"),
-          strata: group.querySelectorAll<SVGPathElement>(
-            "[data-mantle-stratum]",
-          ),
-          lights: group.querySelectorAll<SVGPathElement>("[data-mantle-light]"),
+          seams: rims.querySelectorAll<SVGPathElement>("[data-mantle-edge]"),
+          lights: rims.querySelectorAll<SVGPathElement>("[data-mantle-light]"),
         };
       }),
+      strata: svg.querySelectorAll<SVGCircleElement>("[data-mantle-stratum]"),
       spectrum: svg.querySelector("[data-mantle-spectrum]"),
       stone: svg.querySelector("[data-mantle-stone]"),
       core: svg.querySelector("[data-mantle-core]"),
@@ -200,15 +190,27 @@ function update(svg: SVGSVGElement, time: number) {
     layer.shell?.setAttribute("d", pose.shell);
     layer.contours?.setAttribute("d", pose.contours);
     layer.meridians?.setAttribute("d", pose.meridians);
-    layer.seams.forEach((node, i) => node.setAttribute("d", pose.seams[i % 6]));
-    layer.strata.forEach((node, i) => {
-      node.setAttribute("d", pose.strata[i].d);
-      node.setAttribute("opacity", pose.strata[i].opacity);
+    layer.seams.forEach((node, i) => {
+      const edge = i % 6;
+      node.setAttribute("d", pose.seams[edge]);
+      // The same illumination on both sides of the horizon avoids a brightness
+      // step when a whole meridian transfers between the two depth passes.
+      const longitude = edge < 3 ? CUT_LONGITUDE : 1.3;
+      const light = 0.72 + 0.28 * Math.cos(longitude + phase(time));
+      node.setAttribute(
+        "opacity",
+        ((i < 6 ? 0.7 - (edge % 3) * 0.18 : 1) * light).toFixed(4),
+      );
     });
     layer.lights.forEach((node, i) =>
       node.setAttribute("stroke-dashoffset", fixed(-time * (34 + i * 7))),
     );
   });
+  // The glow belongs to the stationary foundation, never to the orbiting shell.
+  // Only its illumination changes; its circles and transforms stay untouched.
+  nodes.strata.forEach((node, i) =>
+    node.setAttribute("opacity", stratumLight(i, time)),
+  );
   nodes.spectrum?.setAttribute(
     "gradientTransform",
     `rotate(${fixed(time * 12)} 320 302)`,
@@ -217,8 +219,16 @@ function update(svg: SVGSVGElement, time: number) {
   // grazing light reveals the material. The same clock freezes every detail.
   const lightX = Math.sin(time * 0.34);
   const lightY = 1 - Math.cos(time * 0.34);
-  nodes.stone?.setAttribute("cx", (0.28 + lightX * 0.1).toFixed(4));
-  nodes.stone?.setAttribute("cy", (0.2 + lightY * 0.06).toFixed(4));
+  // A clipped surface can lose a tiny disconnected sliver. Its object bounds
+  // jump at that instant, so lighting must use the globe's fixed coordinates.
+  nodes.stone?.setAttribute(
+    "cx",
+    fixed(320 - RADIUS + (0.28 + lightX * 0.1) * RADIUS * 2),
+  );
+  nodes.stone?.setAttribute(
+    "cy",
+    fixed(302 - RADIUS + (0.2 + lightY * 0.06) * RADIUS * 2),
+  );
   nodes.core?.setAttribute("cx", (0.33 + lightX * 0.14).toFixed(4));
   nodes.core?.setAttribute("cy", (0.25 + lightY * 0.09).toFixed(4));
 }
@@ -228,29 +238,26 @@ export function MantleStudy({ paused = false, className }: StudyProps) {
   const ref = useRef<SVGSVGElement>(null);
   const id = `mantle-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   useStudyMotion({ ref, paused, update });
-  const crust = (side: Side) => (
-    <>
-      <path
-        data-mantle-shell
-        d={initial[side].shell}
-        fill={`url(#${id}-stone)`}
-        fillOpacity={side === "front" ? 0.62 : 0.32}
-      />
-      <path
-        data-mantle-contour
-        d={initial[side].contours}
-        stroke={`url(#${id}-engraving)`}
-        strokeWidth=".65"
-        opacity={side === "front" ? 1 : 0.28}
-      />
-      <path
-        data-mantle-meridian
-        d={initial[side].meridians}
-        stroke="#acbbb9"
-        strokeWidth=".45"
-        strokeOpacity=".095"
-        opacity={side === "front" ? 1 : 0.35}
-      />
+  const rims = (side: Side) => (
+    <g
+      data-mantle-rims={side}
+      mask={side === "back" ? `url(#${id}-behind-core)` : undefined}
+    >
+      <g mask={side === "back" ? `url(#${id}-rear-ink)` : undefined}>
+        <path
+          data-mantle-contour
+          d={initial[side].contours}
+          stroke={`url(#${id}-engraving)`}
+          strokeWidth=".65"
+        />
+        <path
+          data-mantle-meridian
+          d={initial[side].meridians}
+          stroke="#acbbb9"
+          strokeWidth=".45"
+          strokeOpacity=".095"
+        />
+      </g>
       <g stroke={`url(#${id}-spectrum)`}>
         {initial[side].seams.map((d, i) => (
           <path
@@ -259,7 +266,10 @@ export function MantleStudy({ paused = false, className }: StudyProps) {
             data-mantle-seam={side === "front" ? "" : undefined}
             d={d}
             strokeWidth={1.4 - (i % 3) * 0.3}
-            opacity={0.7 - (i % 3) * 0.18}
+            opacity={
+              (0.7 - (i % 3) * 0.18) *
+              (0.72 + 0.28 * Math.cos(i < 3 ? CUT_LONGITUDE : 1.3))
+            }
           />
         ))}
         <path
@@ -270,24 +280,19 @@ export function MantleStudy({ paused = false, className }: StudyProps) {
           strokeDasharray="61 610"
           strokeDashoffset="0"
           strokeLinecap="round"
+          opacity={0.72 + 0.28 * Math.cos(CUT_LONGITUDE)}
         />
       </g>
-    </>
+    </g>
   );
   const layer = (side: Side) => (
     <g data-mantle-layer={side}>
-      {side === "back" && crust(side)}
-      <g stroke={`url(#${id}-spectrum)`} strokeWidth=".65">
-        {initial[side].strata.map((stratum, i) => (
-          <path
-            key={i}
-            data-mantle-stratum
-            d={stratum.d}
-            opacity={stratum.opacity}
-          />
-        ))}
-      </g>
-      {side === "front" && crust(side)}
+      <path
+        data-mantle-shell
+        d={initial[side].shell}
+        fill={`url(#${id}-stone)`}
+        fillOpacity={side === "front" ? 0.62 : 0.32}
+      />
     </g>
   );
   return (
@@ -303,9 +308,10 @@ export function MantleStudy({ paused = false, className }: StudyProps) {
         <radialGradient
           id={`${id}-stone`}
           data-mantle-stone
-          cx=".28"
-          cy=".2"
-          r=".86"
+          gradientUnits="userSpaceOnUse"
+          cx={320 - RADIUS + 0.28 * RADIUS * 2}
+          cy={302 - RADIUS + 0.2 * RADIUS * 2}
+          r={0.86 * RADIUS * 2}
         >
           <stop stopColor="#667071" />
           <stop offset=".26" stopColor="#353e40" />
@@ -371,11 +377,60 @@ export function MantleStudy({ paused = false, className }: StudyProps) {
         <clipPath id={`${id}-globe`}>
           <circle cx="320" cy="302" r={RADIUS} />
         </clipPath>
+        <radialGradient
+          id={`${id}-rear-visibility`}
+          gradientUnits="userSpaceOnUse"
+          cx="320"
+          cy="302"
+          r={RADIUS}
+        >
+          <stop stopColor="white" stopOpacity=".28" />
+          <stop offset=".75" stopColor="white" stopOpacity=".4" />
+          <stop offset="1" stopColor="white" />
+        </radialGradient>
+        <mask
+          id={`${id}-rear-ink`}
+          maskUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width="640"
+          height="640"
+        >
+          <circle
+            cx="320"
+            cy="302"
+            r={RADIUS}
+            fill={`url(#${id}-rear-visibility)`}
+          />
+        </mask>
+        <mask
+          id={`${id}-behind-core`}
+          maskUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width="640"
+          height="640"
+        >
+          <rect width="640" height="640" fill="white" />
+          <circle cx="320" cy="302" r="82.5" fill="black" />
+        </mask>
       </defs>
       <ellipse cx="320" cy="541" rx="164" ry="23" fill={`url(#${id}-shadow)`} />
       <circle cx="320" cy="302" r={RADIUS} fill={`url(#${id}-section)`} />
       <g clipPath={`url(#${id}-globe)`}>
         {layer("back")}
+        <g data-mantle-glow stroke={`url(#${id}-spectrum)`} strokeWidth=".65">
+          {STRATA_RADII.map((radius, i) => (
+            <circle
+              key={i}
+              data-mantle-stratum
+              cx="320"
+              cy="302"
+              r={radius}
+              opacity={stratumLight(i, 0)}
+            />
+          ))}
+        </g>
         <circle
           data-mantle-anchor
           cx="320"
@@ -392,6 +447,10 @@ export function MantleStudy({ paused = false, className }: StudyProps) {
           ))}
         </g>
         {layer("front")}
+        {/* Ink has stable compositing across the horizon; the rear pass is
+            still occluded by the core and dims continuously with depth. */}
+        {rims("back")}
+        {rims("front")}
       </g>
       <circle
         cx="320"
