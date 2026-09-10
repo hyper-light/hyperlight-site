@@ -191,6 +191,7 @@ test("every desktop catalog study moves on hover and keeps its pose afterward", 
 test("keyboard focus within a card activates motion until focus leaves", async ({
   page,
   isMobile,
+  browserName,
 }) => {
   test.skip(
     isMobile,
@@ -201,9 +202,12 @@ test("keyboard focus within a card activates motion until focus leaves", async (
   const idle = await geometry(art);
   const idleMarker = await markerPosition(card);
   const projectLink = card.getByRole("link", { name: "Explore Hoard" });
+  // Safari's default Tab policy skips links; Option+Tab includes them natively.
+  const next = browserName === "webkit" ? "Alt+Tab" : "Tab";
+  const previous = browserName === "webkit" ? "Alt+Shift+Tab" : "Shift+Tab";
   await page.getByRole("searchbox", { name: "Search projects" }).focus();
   for (let step = 0; step < 6; step++) {
-    await page.keyboard.press("Tab");
+    await page.keyboard.press(next);
     if (
       await projectLink.evaluate(
         (element) => element === document.activeElement,
@@ -215,13 +219,13 @@ test("keyboard focus within a card activates motion until focus leaves", async (
   await expect(card).toHaveAttribute("data-active", "true");
   await expect.poll(() => geometry(art)).not.toBe(idle);
   await expect.poll(() => markerPosition(card)).not.toBe(idleMarker);
-  await page.keyboard.press("Tab");
+  await page.keyboard.press(next);
   await expect(
     card.getByRole("link", { name: "Hoard repository on GitHub" }),
   ).toBeFocused();
   await expect(card).toHaveAttribute("data-active", "true");
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press(previous);
+  await page.keyboard.press(previous);
   await expect(card).toHaveAttribute("data-active", "false");
   await expectStill(
     art,

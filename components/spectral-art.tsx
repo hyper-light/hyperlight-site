@@ -237,7 +237,7 @@ export function SpectralArt({
     const depths = new Float32Array(TILES);
     const colors = surfaces.map((surface) => surface.getAttribute("color"));
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let visible = true;
+    let visible = false;
     let request = 0;
     let previous = 0;
     let lastPaint = 0;
@@ -286,8 +286,10 @@ export function SpectralArt({
       }
     };
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        visible = entry.isIntersecting;
+      (entries) => {
+        const latest = entries.at(-1);
+        if (!latest) return;
+        visible = latest.isIntersecting;
         sync();
       },
       { rootMargin: "40px" },

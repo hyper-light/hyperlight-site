@@ -25,6 +25,10 @@ async function batchVisibilityEntries(page: Page, selector: string) {
               isIntersecting: false,
             };
             callback([outside, ...entries], observer);
+            visible.target.setAttribute(
+              "data-test-visibility-batch",
+              "delivered",
+            );
           } else {
             callback(entries, observer);
           }
@@ -61,4 +65,24 @@ test("study motion follows the latest queued visibility entry", async ({
   await expect
     .poll(() => movingPath.getAttribute("d"), { timeout: 2000 })
     .not.toBe(initial);
+});
+
+test("Hyperlight follows the latest queued visibility entry", async ({
+  page,
+}) => {
+  await batchVisibilityEntries(page, '[data-study="hyperlight"] svg');
+  await page.goto("/");
+  const art = page.locator('[data-study="hyperlight"] svg');
+  await art.scrollIntoViewIfNeeded();
+  await expect(art).toHaveAttribute("data-test-visibility-batch", "delivered");
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "playing");
+  // An initial frame before the observer settles must not count as sustained motion.
+  await page.waitForTimeout(150);
+  const surface = art.locator("[data-ribbon-surface]").first();
+  for (let sample = 0; sample < 3; sample++) {
+    const pose = await surface.getAttribute("d");
+    await expect
+      .poll(() => surface.getAttribute("d"), { timeout: 2000 })
+      .not.toBe(pose);
+  }
 });

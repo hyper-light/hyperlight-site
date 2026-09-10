@@ -36,8 +36,8 @@ export function Hero() {
           </Button>
         </div>
         <div className="hero-footnote">
-          <span className="tiny-cross">+</span> Independent software. Built with
-          intent.
+          <span className="tiny-cross">+</span> Built independent. Built for
+          agents.
         </div>
       </div>
       <StudyGallery />

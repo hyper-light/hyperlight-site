@@ -7,6 +7,7 @@ export default defineConfig({
   testMatch: [
     "**/card-motion.spec.ts",
     "**/featured-motion.spec.ts",
+    "**/mantle-motion.spec.ts",
     "**/project-preview.spec.ts",
   ],
   outputDir: "test-results/motion",
