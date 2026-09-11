@@ -1,0 +1,372 @@
+---
+title: "Agentic Proof of Work"
+description: "Getting multi-agent work done at scale."
+date: "2026-09-10"
+category: "Engineering"
+featured: true
+draft: false
+---
+
+An agent fixes a parser bug and runs the tests. They pass. During review, it spots a cleaner way to handle the input and changes the patch. The maintainer approves that version. The agent reports that the fix is tested and reviewed.
+
+Except the tests ran against the first patch. The review covered the second. Neither version has both checks.
+
+The maintainer can catch this by reading the conversation and comparing revisions. With several agents working at once, reconstructing what happened becomes another job before any result can be accepted. A summary that says “done” doesn't identify which version passed which check.
+
+A shared ledger keeps that record. The maintainer posts a claim describing the fix and its acceptance requirements. The parser agent reads the claim from the ledger, takes responsibility, and publishes its artifacts and closing testament there. The maintainer reads those records, checks the exact work, and submits its verdicts to the ledger. The ledger records acceptance when the declared requirements are met.
+
+That ledger is the **agentic proof of work**: the authoritative record of what was requested, what was delivered, and whether it met the declared requirements. [Ledger model.][ledger]
+
+## Claim Requirements
+
+A Unicode escape needs four hexadecimal digits, but the parser accepts `"\u12"`. The fix must reject that incomplete escape while preserving valid strings.
+
+“Fix the parser” leaves the agent to guess how much to change and the maintainer to guess what to accept. A **claim** makes that agreement explicit. It has a claimant who issues it, a respondent responsible for the work, a scope, and the validations that define acceptance.
+
+For this fix, an abbreviated claim could read:
+
+```text
+Claim C17
+Claimant: maintainer
+Respondent: parser agent
+Work: reject incomplete Unicode escapes
+Scope: string parser and its regression tests
+
+Required delivery:
+  The maintainer receives the closing testament.
+
+Required checks on the `change` artifact:
+  Behavior — the maintainer runs the agreed input cases.
+  Review   — the maintainer checks for unchecked reads and boundary errors.
+```
+
+The behavioral requirement can be concrete enough to run:
+
+| Input      | Expected result               |
+| ---------- | ----------------------------- |
+| `"\u0041"` | Decode to `A`                 |
+| `"\u12"`   | Reject the incomplete escape  |
+| `"\uZZZZ"` | Reject non-hexadecimal digits |
+| `"hello"`  | Preserve the ordinary string  |
+
+Those four cases can pass while another path still reads beyond the end of the input. The review requirement gives the maintainer a specific quality bar: inspect the patch for unchecked reads and boundary errors.
+
+The claim fixes who evaluates each requirement and which validator definition they use. Changing those terms requires a new claim linked to the original. [Requirements and authority.][peer]
+
+<WorkOrder />
+
+A generated claim is stored in the ledger but isn't actionable. The maintainer posts it to make it available to the parser agent. The parser agent acquires an execution receipt through the ledger, recording its responsibility for the work. The maintainer can prepare several claims and post them as the work is ready to begin.
+
+The parser agent can now record that it found the faulty branch or wrote a regression test. These progress updates leave C17 open, waiting for its evidence and required checks. [Claim transitions.][claim-states]
+
+## Artifact Identity
+
+The parser agent publishes its patch as an **artifact** in the ledger: typed, identified evidence whose content stays fixed. It can also publish a test log, a reproduction, or a diagnostic from an unsuccessful attempt.
+
+`fix.patch` can be overwritten, and a branch can point to a different revision tomorrow. An artifact has a stable identity and a digest of its immutable content. Together, they identify the object and the content expected for it.
+
+The digest covers more than the visible file bytes: the artifact's kind and schema, who produced it, and the claim and work cycle it belongs to are part of its immutable description. The different object families use separate, versioned BLAKE3 hash definitions. Receipt and validation advance the artifact's state while its content stays fixed. [Artifact identity][artifact-identity] and [identity tests.][identity-tests]
+
+The digest lets the maintainer verify the artifact it reads from the ledger. Testing and review establish whether that patch meets the requirements.
+
+An artifact can be visible in the ledger before the agent finishes the rest of its work. The maintainer can read a useful diagnostic while the parser agent is still preparing the patch, then record its artifact receipt in the ledger. Acceptance is evaluated separately.
+
+## Closing Testaments
+
+When the work ends, the parser agent authors a **testament** in the ledger. It records the outcome, a summary, confidence, and the exact artifacts produced. Closing freezes those artifact bindings. The parser agent then posts the testament, making it available for the maintainer to read and acknowledge through the ledger.
+
+For the parser fix, that account might be:
+
+```text
+Response to C17
+Outcome: Complete
+Summary: Added a length check before decoding the escape.
+
+Evidence:
+  change       → artifact A / digest hA
+  test-log     → artifact L / digest hL
+  reproduction → artifact R / digest hR
+```
+
+Here, `A` and `hA` stand for a particular artifact and its content digest.
+
+<EvidenceCassette />
+
+“Complete” is the respondent's reported outcome, accompanied by its assessment of confidence. Acceptance still requires the maintainer to record receipt of the posted testament and submit passing results for the required checks. The ledger can then mark C17 `Satisfied`.
+
+These receipts have different meanings:
+
+| Recorded fact     | What another participant can conclude                                                 |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| Execution receipt | This respondent has taken responsibility for the claim under this receipt generation. |
+| Artifact receipt  | The claimant observed this particular unattached artifact.                            |
+| Testament receipt | The claimant received this particular posted closing account.                         |
+
+A pure receipt validation checks that the claimant received the posted testament. It can pass for a failure report. The patch's behavior and quality have their own checks. [Independent object lifecycles.][object-states]
+
+If the agent couldn't finish, it still owes an authored account. `Partial`, `Refused`, `Impossible`, `Interrupted`, and `Failed` outcomes use the same testament mechanism, with real diagnostic evidence. A partial response can preserve the patch it produced while recording the test log as a missing output. Its diagnostic explains why that output is absent.
+
+If the agent disappears before responding, there is no testament from it. A committed deadline or an authorized change of responsibility can determine what happens next; the missing account remains missing. [Response outcomes and failure evidence.][response-states]
+
+## Evidence Binding
+
+The `change` slot in C17 names the patch to evaluate. Within a response, that slot resolves to one artifact ID and digest. Every Required check for that slot must pass on that same artifact.
+
+The two results identify their targets:
+
+```text
+Behavior check → artifact A / hA → Pass
+Review check   → artifact B / hB → Pass
+```
+
+A still needs its review; B still needs its behavioral check. Neither patch has passed both requirements.
+
+With both passing results bound to A, there is evidence for accepting A. Delivering B requires both checks to pass on B. [Same-artifact rule][validation-states] and [aggregation tests.][aggregation-tests]
+
+<ValidationFixture />
+
+Two reports can have identical fields and describe different test runs. Each validator's target must therefore be selected by the artifact identity and digest bound to its requirement.
+
+A **validation** is the requirement: what to check, against which target, to what standard. A **validator** is the tool, script, function, or agentic skill that carries out that check. The **verdict** records the evaluation's result alongside its evidence.
+
+## Validator Execution
+
+The designated evaluator reads the evaluation context from the ledger and records the start of its check. It runs the validator in its own environment, then submits the result and evidence to the ledger. The ledger verifies the submitter's authority, the evidence binding, and the permitted state transition before recording it. Tool and agent execution stays with the participants.
+
+The validator contract pins its identity and version, input and result schemas, target, evaluator, and any declared instructions or quality bar. It also bounds execution attempts and deadlines. These requirements stay fixed wherever the participant runs the check. [Participant execution and validator contracts.][validator-contract]
+
+For C17, the maintainer is both claimant and evaluator. It runs the agreed cases against the patch and reviews that same patch for boundary errors, submitting each result with its evidence to the ledger. Both requirements must pass, and they can run concurrently.
+
+One requirement can also have two ordered phases. For a research assignment, a programmatic check might confirm that the report contains the requested comparison and citation fields. After that passes, an agentic evaluator judges whether the cited sources support the conclusions. Unsupported conclusions fail that quality check even when the report's structure is valid.
+
+This order applies within that requirement; other requirements can proceed independently. An agentic-only requirement starts directly in its quality phase. [Evaluation phases.][validation-states]
+
+The claimant can designate itself as evaluator or name another participant. Only the designated evaluator can submit the verdict. The maintainer can request advice through a consultation claim in the ledger; it remains responsible for the original verdict unless that requirement explicitly designates the consulted participant. [Evaluator designation.][peer]
+
+## Verification Limits
+
+A test-report validator reads counts for passed, failed, and skipped tests. A report with any failed tests fails; a report with no passes is incomplete; otherwise it passes.
+
+| Submitted report                | Verdict    |
+| ------------------------------- | ---------- |
+| 12 passed, 0 failed, 0 skipped  | Pass       |
+| 100 passed, 1 failed, 0 skipped | Fail       |
+| 0 passed, 0 failed, 9 skipped   | Incomplete |
+
+This validator checks the submitted counts. Establishing that the runner executed, that the counts are accurate, and that the suite covered the bug requires evidence of the actual test execution against the patch. Even a verified passing run establishes only what those tests checked. [Test-report validator.][test-report]
+
+Authentication establishes who submitted a result, and a digest identifies the evidence. Trust in the execution depends on the acceptance contract. It can require an independent run, an approved evaluator, or additional execution evidence. [Execution and attestation boundary.][validator-contract]
+
+The same division applies to other work. A research report can have a citation on every row and still misrepresent its sources; a reviewer has to read them. A design can meet the required image dimensions and still miss the brief; that takes a separate judgment. Each result records which requirement was evaluated.
+
+## Validation Outcomes
+
+The parser agent has published its patch in the ledger, but the maintainer can't start its test runner because a dependency is unavailable. This is an evaluation **Error**: the diagnostic explains why the maintainer couldn't establish whether the patch met the requirement.
+
+If the runner starts and the malformed escape is still accepted, that's **Fail**: the present work doesn't meet its requirement. If the required patch is absent from the closed response, that's **Incomplete**: there's no target to evaluate.
+
+An Error may allow another attempt or a declared fallback against the same pinned target. Exhausting those attempts produces a terminal error. A conclusive Fail ends the check with evidence against the work; correcting it requires new work. [Outcome and retry rules.][validation-states]
+
+An **Observe** check records a result without delaying or failing required acceptance. The maintainer might use one to measure parser throughput during a correctness fix. If performance must block delivery, the maintainer declares that check Required when issuing the claim.
+
+The evidence identifies where the problem occurred. The respondent's diagnostic explains why it couldn't produce an output. The evaluator's result artifact explains what happened while checking one.
+
+## Corrections and Successor Claims
+
+A patch can reject incomplete escapes while introducing an unchecked read elsewhere. The maintainer submits that failing review to the ledger, which marks C17 failed. The review result, failed patch, and closing testament remain recorded, explaining why the fix wasn't accepted.
+
+The maintainer posts a successor claim, C18, in the ledger, naming the failed work to correct. The parser agent reads C18 and publishes a new patch under that claim. C17 retains its failure, including the first patch and the review that rejected it, after C18 succeeds.
+
+<RecordReader />
+
+A claim can also permit several explicitly related work cycles, within declared limits and while it remains eligible for more work. Each cycle has its own immutable testament and evidence.
+
+Before a failed response ends the claim, the ledger looks for valid evidence among responses already posted, received, and evaluated. A valid artifact from one response can cover a required slot even if another response failed. Different slots may have different successful witnesses, but the checks for a single slot still have to agree on one artifact.
+
+These alternatives must be available before the claim's terminal failure commits. After that point, further work needs an explicit successor. [Response alternatives and terminal outcomes.][aggregation]
+
+A check that already began may finish for the audit under its existing authority, leaving the terminal claim unchanged. Cancellation, receipt adoption, or another authority fence can make that late result ineligible. A submitted result must still pass the authority checks, even if the external command finished successfully.
+
+## Claim Dependencies
+
+A larger change might move stored data to a new format. The migration author finishes its transformation code while another participant is still testing compatibility. Acceptance has to wait for that work too.
+
+The parent claim declares those dependencies:
+
+```text
+Migration claim
+  depends_on → transformation tests
+  depends_on → compatibility report
+  awaits     → rollout consultation
+```
+
+`DependsOn` requires the other claim to be satisfied. A failed compatibility check blocks acceptance of the migration. `Awaits` requires the other claim to become terminal. The author can continue after a consultation reports that the proposed rollout won't work, using that answer to change the plan.
+
+The satisfaction rule combines the local checks with those dependencies:
+
+```text
+satisfied = successful local evaluation
+            AND all DependsOn targets are satisfied
+            AND all Awaits targets are terminal
+```
+
+Relations such as “reviews” or “derived from” record connections without blocking acceptance. Satisfaction must follow from actual outcomes: two claims that depend on each other remain unsatisfied while each is waiting for the other. [Dependency and satisfaction rules.][dependencies]
+
+Stopping the migration leaves its remaining child work and waits to be accounted for. Cancelling a wait ends that wait while preserving the observed claims and their outcomes. The parent can release its scope only after its waits have completed or been cancelled and every child has released its own scope. This keeps responsibility for unfinished work visible after the parent becomes terminal. [Scope and release.][scope]
+
+## Record Durability
+
+If the parser agent is replaced or the coordinator restarts, the next participant reads C17, its exact patch, the failed review, and the successor from the ledger. The work and its evaluation remain available across conversations.
+
+Recovery replays committed facts, including the original validator results and deadline events. Their recorded outcomes stay fixed during replay.
+
+If a response committed but its reply was lost, an exact retry of a retained request returns the recorded outcome. Reusing that request identity with different content conflicts. Once its history expires, the ledger must recover a verified archived receipt or return `RequestHistoryExpired`, not execute the old request again.
+
+External tool calls need their own retry handling. The participant must determine whether a tool ran and whether invoking it again would repeat a side effect. The ledger's request history covers its own committed operations. [Replay and request identity.][request-identity]
+
+The evaluator's result artifacts and the claimant's result testament retain an audit of the checks alongside the respondent's original account. These have separate result roles: result artifacts finish at `Generated`, and the result testament finishes at `Posted`. Their lifecycle ends there, keeping the audit outside ordinary work acceptance. [Result evidence.][audit]
+
+## Ledger Sharding
+
+Several teams can use the same ledger service while working on unrelated codebases. Each session has its own ordered history. C17 and C18 belong to the parser session; work in another session can advance independently.
+
+Routing starts with the tenant and session identities. A directory maps their combined key to the session's placement. Its records can be split into bounded namespace ranges as more sessions arrive. Each session has its own leader, so unrelated work doesn't queue behind one fleet-wide claim sequence. [Session authority and routing.][distribution-authority]
+
+Inside a session, state can also be divided into ranges. Rows belonging to one claim stay together, including its work cycles and evaluations. A range boundary falls between these groups. Splitting the stored state preserves the session's single mutation order.
+
+Moving a range starts by copying a snapshot and catching the destination up with committed records. A barrier then fences writes to that range while the destination proves it's ready. Activation records the new placement. If the destination stops responding, the move waits with that range fenced; unrelated ranges can still accept eligible writes. [Range layout and movement.][range-movement]
+
+<LedgerShards />
+
+Updates spanning ranges become visible together at one session sequence. A parent claim can't appear satisfied before the prerequisite result that satisfied it. Dependencies requiring that atomic decision stay within the same session; collaboration across sessions uses explicit coordination and imported evidence. [Cross-range publication][range-publication] and [session boundaries.][session-boundaries]
+
+## Ledger Replication
+
+When the maintainer submits C18's passing review, the session leader checks the request and puts the resulting mutation in order. Voting replicas persist that record. The operation commits when a quorum has durably retained it, and a normal reply waits until the complete state change is visible.
+
+A single-server deployment still flushes its required writes before acknowledging them. Replication adds surviving copies and quorum agreement. A replica whose disk write fails can't contribute the acknowledgment needed to commit. [Durable commit rules][durable-commit] and [failure tests.][quorum-tests]
+
+Replication and visibility have separate progress. If a mutation spans three active state ranges and one is still applying the previous record, a coherent read waits for the full update. It can't combine the new acceptance status with an older evaluation record. Optional followers can catch up later; the required serving ranges determine when that view is ready. [Publication and reads.][range-publication]
+
+## Global Distribution
+
+A team can place a session's replicas near its participants to keep writes within one region. That placement still depends on the region remaining available.
+
+Surviving the loss of an entire region requires replicas across failure domains. With one voting replica in each of three regions, losing any one leaves two voters: enough for a majority. Three replicas split between two regions, two in one and one in the other, don't provide the same protection. Losing the two-replica region leaves the session without quorum.
+
+<LedgerPlacement />
+
+The stronger placement has a cost: committed writes wait for persistence across regions. The deployment declares which failures it must survive and places both ledger replicas and evidence copies accordingly. Insufficient placement must be reported rather than silently promising that tolerance. [Regional placement and durability.][global-placement]
+
+## Evidence Custody
+
+C18's ledger record identifies the accepted patch. The patch's bytes also need to survive. A readable history with an unavailable artifact would leave the next maintainer unable to inspect or apply the correction.
+
+The content store seals the immutable object, and every required content copy verifies the complete bytes before reporting them durable. A custody receipt binds that fact to the content, the copy, and the current placement. Beginning an artifact evaluation is refused while required copies are missing.
+
+Adding a new content copy requires establishing its custody of the artifact. An old receipt from a previous placement doesn't establish that the newly required copy has the bytes. Ledger replication and artifact custody therefore protect two necessary parts of the same handoff: the recorded decision and the evidence it names. [Content custody.][content-custody]
+
+## Failover and Recovery
+
+Suppose the parser session's leader loses contact with the other two voters. The remaining majority can elect a leader and continue from the committed history. The isolated server can't commit another review by itself or complete an authoritative read using only its local state.
+
+<ReplicaFailover />
+
+Before serving, the new leader establishes its current authority and makes the required committed state available. The next participant sees the same C17 failure and C18 correction. A reply lost during the interruption is resolved through the retained request identity, preserving the original outcome. [Quorum and serving authority.][failover-authority]
+
+A restarted replica recovers a verified checkpoint and applies the committed records after it. Those records include the evaluation results; recovery doesn't run the parser tests again. [Checkpoint recovery.][checkpoint-recovery]
+
+If too few voters survive, ordinary failover stops. Restoring a backup is a separate recovery operation with a known retained prefix. Continuing the old authority requires fencing its previous members; otherwise restoration creates an explicitly acknowledged new incarnation. A backup's age determines which later work it may lack. An asynchronous backup can't promise the same preservation of acknowledged writes as synchronous quorum replication. [Disaster recovery and authority.][disaster-recovery]
+
+## Failure Detection and Lifeguard
+
+A server holding the parser session can answer late because its network is slow, its event loop fell behind, or the server stopped. Replacing a healthy server unnecessarily causes more copying and placement changes while the team is still waiting for its work.
+
+The SWIM-based detector first probes the host directly. If that times out, it asks up to three other members to probe the same host. Suspicion begins after those attempts fail, and only for a member that previously answered. A busy local connection or unavailable route leaves the attempt inconclusive. [Probe handling.][liveness-probes]
+
+Lifeguard also accounts for the observer's own health. Its missed probes and late ticks raise a local score; successful probes and answers lower it. That score stretches its timeouts from one to three times their normal duration. An observer that's struggling to run gives its peers more time to answer. [Local health.][liveness-health]
+
+Once suspicion starts, independent confirmations shorten its deadline. Repeated gossip of the same evidence doesn't restart the timer. A suspected host can refute the accusation with a higher incarnation number, clearing the old suspicion. [Suspicion and refutation.][liveness-contract]
+
+## Bounded Liveness Extensions
+
+A slow host can also ask its accuser for a bounded “late homework” extension. It supplies a progress witness: the number of ticks its placement loop has completed. Advancing that counter demonstrates that the control loop is still running. It says nothing about how much of C18's parser fix is finished.
+
+The accuser grants more time only when the witness has advanced since the previous grant. Grants are separated by at least one probe period, decrease by halves down to a floor, and stop after five for that host incarnation. A request reporting the host as overloaded is denied; that signal comes from its memory use and disk headroom. An unchanged witness, a request that's too soon, or an exhausted allowance is also denied. [Extension rules][liveness-extensions] and [progress witness.][liveness-witness]
+
+Granted time provides a grace window before another suspicion starts and extends an existing suspicion's deadline. This gives a temporarily slow host room to recover while preserving a limit on how long the observer waits without further evidence of progress.
+
+<LivenessGuard />
+
+## Latency-Aware Probing
+
+A probe to another region normally takes longer than one to a neighboring server. Applying the same short deadline to both creates avoidable suspicion; using a long deadline everywhere delays detection nearby.
+
+Each node learns a Vivaldi network coordinate from acknowledged probe round trips. The coordinate has eight dimensions, an access-link delay and an error estimate. Two coordinates predict a round-trip duration; their errors add a margin for uncertainty. Sparse or invalid observations use conservative defaults. [Coordinate estimation.][network-coordinates]
+
+The current probe deadline takes three times that upper estimate, clamps it between 300 milliseconds and two seconds, then applies the observer's health multiplier. The estimate adapts the wait to the network while the multiplier accounts for the observer's own slowness. [Probe deadlines.][coordinate-deadline]
+
+<LatencyProbing />
+
+The adjustment applies to liveness probes. Work requests follow the directory's current session leader and route epoch; coordinates don't rank request destinations. C18's review still goes to the authority for its session. [Request routing.][leader-routing]
+
+## Raft Authority
+
+The directory records settled alive or dead outcomes, rather than each temporary suspicion. Placement decisions and failure-tolerance reports consume those committed facts, so a single observer's suspicion doesn't immediately start moving copies. [Committed liveness.][committed-liveness]
+
+Raft separately governs the session's leader and quorum. A liveness extension doesn't grant leadership, extend a claim deadline, or allow a minority to commit C18's review. The surviving replicas still need the authority and durable agreement described above. These mechanisms reduce avoidable suspicion and placement churn while leaving the acceptance and consensus rules intact. [Consensus authority.][raft-authority]
+
+## Implementation and Testing Limits
+
+Three-process tests cover expansion from one voter to three, a controller crash and restart during placement, and a quorum read while another host is down. They establish those node-failure cases, not measured multi-region performance or global throughput. [Placement qualification.][placement-tests]
+
+Failure-detection tests cover a stopped host and revival over real QUIC, health-score bounds, coordinate convergence, and extension grants and refusals. The extension tests use crafted probes, rather than a host actually struggling under load. They don't establish a WAN performance result or guarantee that liveness will never oscillate under changing network conditions. [Liveness qualification.][liveness-tests]
+
+State-range movement is implemented, but current voters and extra holders still retain the full session state. Range serving doesn't yet reduce that per-session memory requirement. Placement execution and control partitions also retain a founder-host dependency. [Range limits][range-limits] and [control-plane limits.][control-limits]
+
+Custody currently verifies the placement's required copies; independently checking those copies against its promised failure domains remains unfinished. These limits matter when selecting the failures a deployment can actually tolerate. [Custody qualification.][custody-limits]
+
+When C18's correction passes both checks, the next agent can retrieve that exact patch and its passing evaluations from the ledger. C17's earlier patch and failed review remain linked to it. The accepted correction and the failure that prompted it are both available to the next participant.
+
+[ledger]: https://github.com/hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md
+[peer]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md
+[claim-states]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md#3-claim-transitions
+[object-states]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md
+[response-states]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md#5-response-testament-transitions-and-multiple-work-cycles
+[artifact-identity]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-model/src/lifecycle/artifact_descriptor.rs#L528
+[identity-tests]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-model/src/lifecycle/artifact_descriptor_tests.rs#L133
+[validation-states]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md#6-validation-target-phases-and-outcome-transitions
+[aggregation-tests]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-model/src/lifecycle/aggregation_tests.rs#L244
+[validator-contract]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md#4-supplying-and-invoking-validators
+[test-report]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-evidence/src/validators.rs#L175
+[aggregation]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md#7-aggregation-short-circuit-and-races
+[dependencies]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/02-domain-and-lifecycle.md#7-graph-satisfaction-and-parked-scopes
+[scope]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/CONTEXT.md#language
+[request-identity]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/02-domain-and-lifecycle.md
+[audit]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md#8-asymmetric-result-evidence-and-audit-closure
+[distribution-authority]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md#L41
+[range-movement]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/25-parallel-materialization-and-ranges.md#L132
+[range-publication]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md#L298
+[session-boundaries]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/02-domain-and-lifecycle.md#1-scope-topology-and-durable-truth
+[durable-commit]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md#L121
+[quorum-tests]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-consensus/src/tests.rs#L497
+[global-placement]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md#L508
+[content-custody]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/26-custody-archive-retention-and-restore.md#L13
+[failover-authority]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md#L315
+[checkpoint-recovery]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md#L400
+[disaster-recovery]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/26-custody-archive-retention-and-restore.md#L525
+[placement-tests]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/24-placement-execution-and-fleet-control.md#L929
+[range-limits]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/25-parallel-materialization-and-ranges.md#L673
+[control-limits]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/24-placement-execution-and-fleet-control.md#L763
+[custody-limits]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/26-custody-archive-retention-and-restore.md#L72
+[liveness-probes]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/driver.rs#L1123
+[liveness-health]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/health.rs#L6
+[liveness-contract]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/24-placement-execution-and-fleet-control.md#L590
+[liveness-extensions]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/suspicion.rs#L8
+[liveness-witness]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/placement_agent.rs#L907
+[network-coordinates]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/coordinates.rs#L55
+[coordinate-deadline]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/driver.rs#L1391
+[leader-routing]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/route_cache_host.rs#L245
+[committed-liveness]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/24-placement-execution-and-fleet-control.md#L634
+[raft-authority]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-consensus/src/lib.rs#L505
+[liveness-tests]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/09-implementation-status.md#L7262
