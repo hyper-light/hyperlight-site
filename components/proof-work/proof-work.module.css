@@ -113,30 +113,19 @@
   stroke-linecap: round;
 }
 .sceneHeading {
-  fill: #9aa9bc;
-  font-family: var(--font-mono), monospace;
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+  composes: legend from "../diagram-type.module.css";
+}
+.sceneName {
+  composes: name from "../diagram-type.module.css";
 }
 .sceneLabel {
-  fill: #c6d0df;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 13px;
-  font-weight: 400;
+  composes: label from "../diagram-type.module.css";
 }
 .sceneSmall {
-  fill: #aab8c9;
-  font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  font-weight: 400;
+  composes: detail from "../diagram-type.module.css";
 }
 .sceneStatus {
-  fill: #c6d0df;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 13px;
-  font-weight: 400;
+  composes: label from "../diagram-type.module.css";
 }
 .shortLabel {
   display: none;
@@ -218,14 +207,13 @@
   .actions {
     flex-direction: column-reverse;
   }
-  .sceneLabel {
-    font-size: 15px;
+  .sceneName,
+  .sceneLabel,
+  .sceneStatus {
+    font-size: 13px;
   }
   .sceneSmall {
     font-size: 12px;
-  }
-  .sceneStatus {
-    font-size: 15px;
   }
   .sceneHeading {
     font-size: 11px;

@@ -66,27 +66,18 @@
   display: none;
 }
 .number {
-  fill: #8d9daf;
-  font-family: var(--font-mono), monospace;
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  composes: index from "./diagram-type.module.css";
 }
 .nodeTitle {
-  fill: #e1e5eb;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 18px;
-  font-weight: 450;
+  composes: name from "./diagram-type.module.css";
+  font-size: 16px;
 }
 .nodeDetail {
-  fill: #aab2c0;
-  font-family: var(--font-sans), sans-serif;
+  composes: detail from "./diagram-type.module.css";
   font-size: 11px;
 }
 .loopLabel {
-  fill: #8b9aac;
-  font-family: var(--font-mono), monospace;
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  composes: legend from "./diagram-type.module.css";
 }
 .figure .legend {
   display: grid;
@@ -143,10 +134,7 @@
     display: block;
   }
   .nodeTitle {
-    font-size: 17px;
-  }
-  .nodeDetail {
-    font-size: 15px;
+    font-size: 16px;
   }
   .figure .legend {
     grid-template-columns: 1fr;
@@ -161,9 +149,6 @@
   }
   .figure .legend strong {
     margin: 0;
-  }
-  .loopLabel {
-    font-size: 11px;
   }
   .caption {
     padding: 16px 18px 20px;

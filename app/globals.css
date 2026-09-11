@@ -1368,11 +1368,15 @@ html[data-motion="paused"] .study-stage {
 .next-project > div > span:last-child {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   font-size: 25px;
   letter-spacing: -0.7px;
 }
+.next-project [data-project-mark] {
+  flex-shrink: 0;
+}
 .next-project > svg {
+  flex-shrink: 0;
   color: #9b97ad;
   transition: transform 0.25s;
 }

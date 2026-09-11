@@ -19,7 +19,7 @@ export function blend(selection: number, values: readonly number[]) {
   );
 }
 
-/** One rigid 3D instrument plane. Text stays camera-facing at its projected anchor. */
+/** One rigid instrument plane: surface lettering is etched into its projection. */
 export function processScene(time: number, portrait: boolean) {
   const paths: ProofPath[] = [];
   const labels: ProofLabel[] = [];
@@ -35,13 +35,18 @@ export function processScene(time: number, portrait: boolean) {
   const centerY = portrait ? 370 : 260;
   const pitch = 0.31 + Math.sin(time * 0.37) * 0.065;
   const yaw = 0.24 + Math.sin(time * 0.29 + 0.5) * 0.07;
+  const scaleX = portrait ? 0.86 : 0.95;
+  // The same affine derivatives govern both the glass and its printed lettering.
+  const a = Math.cos(yaw) * scaleX;
+  const b = 0;
+  const c = Math.sin(pitch) * Math.sin(yaw) * scaleX;
+  const d = Math.cos(pitch) * 0.95;
   const point = ([x, y]: Point, depth = 0): Point => {
     const dx = x - centerX,
       dy = y - centerY;
     const z = dy * Math.sin(pitch) + depth * Math.cos(pitch);
     return [
-      centerX +
-        (dx * Math.cos(yaw) + z * Math.sin(yaw)) * (portrait ? 0.86 : 0.95),
+      centerX + (dx * Math.cos(yaw) + z * Math.sin(yaw)) * scaleX,
       centerY + (dy * Math.cos(pitch) - depth * Math.sin(pitch)) * 0.95,
     ];
   };
@@ -200,6 +205,62 @@ export function processScene(time: number, portrait: boolean) {
       kind: "small",
       ...options,
     });
+    const opacity = options.opacity ?? 1;
+    const cut = Math.min(x + width - 30, x + 76);
+    // A short record ID interrupts the engraved header rail. The channel resumes
+    // past its reserved lettering slot; neither the stroke nor its bevel crosses ink.
+    line(
+      id + "-id-register",
+      [
+        [x + 10, y + 12],
+        [x + 8, y + 14],
+        [x + 8, y + 31],
+        [x + 11, y + 31],
+      ],
+      "fine",
+      opacity * 0.5,
+      options.tone,
+    );
+    line(
+      id + "-id-channel",
+      [
+        [cut, y + 19],
+        [x + width - 13, y + 19],
+        [x + width - 10, y + 22],
+        [x + width - 10, y + 29],
+      ],
+      "fine",
+      opacity * 0.32,
+      options.tone,
+    );
+    layer(
+      id + "-id-recess",
+      [
+        [cut, y + 19],
+        [x + width - 13, y + 19],
+        [x + width - 10, y + 22],
+        [x + width - 11, y + 23],
+        [x + width - 14, y + 20],
+        [cut, y + 20],
+        [cut, y + 19],
+      ],
+      -0.8,
+      "shade",
+      opacity * 0.18,
+      options.tone,
+    );
+    line(
+      id + "-field-rule",
+      [
+        [x + 10, y + 53],
+        [x + 10, y + 56],
+        [x + width - 13, y + 56],
+        [x + width - 10, y + 53],
+      ],
+      "fine",
+      opacity * 0.24,
+      options.tone,
+    );
     // Printed identity marks and an unbroken edge distinguish a record from a button.
     for (let tick = 0; tick < 24; tick++) {
       layer(
@@ -364,13 +425,66 @@ export function processScene(time: number, portrait: boolean) {
       });
     }
     box(id, x, y, width, height, { opacity: 0.48 });
-    label(id + "-name", name, x + 25, y + 28, { kind: "status" });
+    label(id + "-name", name, x + 25, y + 28, { kind: "name" });
     label(id + "-role", role, x + 25, y + 50, { kind: "heading" });
+    // An open, keyed ID rail is machined into the front laminate. Its recessed
+    // lower edge supports the silkscreen name without making a separate badge.
+    line(
+      id + "-id-register",
+      [
+        [x + 19, y + 13],
+        [x + 15, y + 17],
+        [x + 15, y + 30],
+        [x + 19, y + 34],
+        [x + width - 21, y + 34],
+        [x + width - 17, y + 30],
+      ],
+      "fine",
+      0.42,
+    );
+    layer(
+      id + "-id-recess",
+      [
+        [x + 19, y + 34],
+        [x + width - 21, y + 34],
+        [x + width - 17, y + 30],
+        [x + width - 17, y + 32],
+        [x + width - 21, y + 36],
+        [x + 19, y + 36],
+        [x + 19, y + 34],
+      ],
+      -0.8,
+      "shade",
+      0.16,
+    );
+    for (let tick = 0; tick < 3; tick++) {
+      line(
+        `${id}-id-key-${tick}`,
+        [
+          [x + width - 17, y + 15 + tick * 4],
+          [x + width - 13, y + 15 + tick * 4],
+        ],
+        "fine",
+        0.34,
+      );
+    }
+    line(
+      id + "-role-register",
+      [
+        [x + 17, y + 43],
+        [x + 17, y + 50],
+        [x + 20, y + 50],
+      ],
+      "fine",
+      0.4,
+    );
     line(
       id + "-divider",
       [
         [x + 16, y + 60],
-        [x + width - 16, y + 60],
+        [x + width - 31, y + 60],
+        [x + width - 27, y + 56],
+        [x + width - 16, y + 56],
       ],
       "fine",
       0.3,
@@ -441,6 +555,9 @@ export function processScene(time: number, portrait: boolean) {
         return {
           ...item,
           surface: enclosing ? enclosing.id + "-skin" : undefined,
+          transform: enclosing
+            ? `matrix(${[a, b, c, d, item.x - a * item.x - c * item.y, item.y - b * item.x - d * item.y].map((value) => value.toFixed(6)).join(" ")})`
+            : undefined,
         };
       }),
     }),

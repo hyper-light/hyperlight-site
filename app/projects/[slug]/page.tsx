@@ -152,11 +152,11 @@ export default async function ProjectPage({ params }: Props) {
         <div>
           <span className="eyebrow">Keep exploring</span>
           <span>
-            <ProjectMark slug={next.slug} />
+            <ProjectMark slug={next.slug} width={22} height={22} />
             {next.name}
           </span>
         </div>
-        <ArrowRight size={26} />
+        <ArrowRight size={22} />
       </Link>
     </main>
   );

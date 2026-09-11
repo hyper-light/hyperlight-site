@@ -70,18 +70,10 @@
   height: auto;
 }
 .word {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.015em;
-  fill: #d2dde8;
+  composes: label from "./diagram-type.module.css";
 }
 .sceneLabel {
-  fill: #9aa9bc;
-  font:
-    9px var(--font-mono),
-    monospace;
-  letter-spacing: 1.1px;
+  composes: legend from "./diagram-type.module.css";
 }
 .figure .steps {
   display: grid;

@@ -185,38 +185,20 @@
   opacity: 0.9;
 }
 .channelLabel {
-  fill: #9aa9bc;
-  font-family: var(--font-mono), monospace;
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+  composes: legend from "./diagram-type.module.css";
 }
 .rankLabel {
-  fill: #8090a5;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 9px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
+  composes: index from "./diagram-type.module.css";
 }
 .candidateLabel {
-  fill: #d0dbe9;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 10px;
-  font-weight: 400;
+  composes: identifier from "./diagram-type.module.css";
 }
 .outputLabel {
-  fill: #b8c4d5;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 10px;
-  font-weight: 400;
+  composes: identifier from "./diagram-type.module.css";
 }
 .formulaLabel {
-  fill: #9aa9bc;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 11px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
+  composes: label from "./diagram-type.module.css";
+  font-size: 10.5px;
 }
 .art [data-candidate] {
   transition: opacity 220ms ease;
@@ -318,6 +300,14 @@
   }
 }
 @container (max-width: 420px) {
+  .rankLabel {
+    font-size: 11px;
+  }
+  .candidateLabel,
+  .outputLabel,
+  .formulaLabel {
+    font-size: 12px;
+  }
   .landscape {
     display: none;
   }

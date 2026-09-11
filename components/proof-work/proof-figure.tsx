@@ -36,6 +36,7 @@ export function ProofFigure({
   frame,
   caption,
   autoAdvance = false,
+  stepDuration = 0,
 }: {
   id: string;
   eyebrow: string;
@@ -45,6 +46,8 @@ export function ProofFigure({
   frame: ProofFrameFunction;
   caption: ReactNode;
   autoAdvance?: boolean;
+  /** Seconds per meaningful lifecycle step; zero keeps the short selection morph. */
+  stepDuration?: number;
 }) {
   const [selected, setSelected] = useState(0);
   const [sequence, setSequence] = useState(autoAdvance);
@@ -156,6 +159,7 @@ export function ProofFigure({
           selection={selected}
           portrait={false}
           paused={paused}
+          stepDuration={stepDuration}
         />
         <ProofScene
           key={`portrait-${replay}`}
@@ -163,6 +167,7 @@ export function ProofFigure({
           selection={selected}
           portrait
           paused={paused}
+          stepDuration={stepDuration}
         />
       </div>
       <div className={tabs.tabs} role="tablist" aria-label={title}>

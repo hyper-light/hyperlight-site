@@ -34,6 +34,72 @@ test("Slates inherits the ecosystem icon colors at rest and on hover", async ({
   await strip.screenshot({ path: testInfo.outputPath("ecosystem-icons.png") });
 });
 
+for (const [slug, nextSlug, nextName] of [
+  ["vorpal", "focal", "Focal"],
+  ["focal", "slates", "Slates"],
+  ["grid", "ergo", "Ergo"],
+]) {
+  test(`${slug} next-project link has compact, aligned icons`, async ({
+    page,
+    isMobile,
+  }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(`/projects/${slug}`);
+    await page.evaluate(() => document.fonts.ready);
+    const link = page.getByRole("link", {
+      name: `Keep exploring ${nextName}`,
+      exact: true,
+    });
+    await expect(link).toHaveAttribute("href", `/projects/${nextSlug}`);
+    const mark = link.locator(`svg[data-project-mark="${nextSlug}"]`);
+    const arrow = link.locator(":scope > svg");
+    for (const width of isMobile ? [320, 390] : [1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await link.scrollIntoViewIfNeeded();
+      for (const icon of [mark, arrow]) {
+        await expect(icon).toHaveCSS("width", "22px");
+        await expect(icon).toHaveCSS("height", "22px");
+        await expect(icon).toHaveCSS("flex-shrink", "0");
+      }
+      const row = link.locator(":scope > div > span:last-child");
+      await expect(row).toHaveCSS("align-items", "center");
+      await expect(row).toHaveCSS("gap", "10px");
+      const fit = await link.evaluate((element) => {
+        const bounds = (selector: string) =>
+          element.querySelector(selector)!.getBoundingClientRect();
+        const center = (rect: DOMRect) => rect.top + rect.height / 2;
+        const rect = element.getBoundingClientRect();
+        return {
+          markOffset: Math.abs(
+            center(bounds("[data-project-mark]")) -
+              center(bounds(":scope > div > span:last-child")),
+          ),
+          arrowOffset: Math.abs(
+            center(bounds(":scope > svg")) - center(bounds(":scope > div")),
+          ),
+          left: rect.left,
+          right: rect.right,
+          viewport: document.documentElement.clientWidth,
+          pageOverflow:
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+          linkOverflow: element.scrollWidth - element.clientWidth,
+        };
+      });
+      expect(fit.markOffset).toBeLessThanOrEqual(1);
+      expect(fit.arrowOffset).toBeLessThanOrEqual(1);
+      expect(fit.left).toBeGreaterThanOrEqual(0);
+      expect(fit.right).toBeLessThanOrEqual(fit.viewport + 1);
+      expect(fit.pageOverflow).toBeLessThanOrEqual(1);
+      expect(fit.linkOverflow).toBeLessThanOrEqual(1);
+      if (slug === "vorpal")
+        await link.screenshot({
+          path: testInfo.outputPath(`next-project-${width}.png`),
+        });
+    }
+  });
+}
+
 async function geometry(art: Locator) {
   return art.locator("path").evaluateAll((paths) => {
     const value = paths.map((path) => path.getAttribute("d")).join("|");

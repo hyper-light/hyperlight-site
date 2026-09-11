@@ -98,12 +98,16 @@ test("record text has padding inside its projected glass surface", async ({
             (_, index) => [values[index * 2], values[index * 2 + 1]],
           );
           const box = label.getBBox();
+          const transform = label.transform.baseVal.consolidate()?.matrix;
           const corners = [
             [box.x, box.y],
             [box.x + box.width, box.y],
             [box.x + box.width, box.y + box.height],
             [box.x, box.y + box.height],
-          ];
+          ].map(([x, y]) => {
+            const point = new DOMPoint(x, y).matrixTransform(transform);
+            return [point.x, point.y];
+          });
           let clearance = Infinity;
           for (let index = 1; index < points.length; index++) {
             const [a, b] = [points[index - 1], points[index]];
@@ -254,15 +258,22 @@ test("all nine assemblies fit, use stable tab heights, and remain legible at nar
             ),
             (node) => {
               const box = node.getBBox();
+              const transform = node.transform.baseVal.consolidate()?.matrix;
+              const corners = [
+                [box.x, box.y],
+                [box.x + box.width, box.y],
+                [box.x + box.width, box.y + box.height],
+                [box.x, box.y + box.height],
+              ].map(([x, y]) => new DOMPoint(x, y).matrixTransform(transform));
               return {
                 id:
                   node.getAttribute("data-proof-path") ??
                   node.getAttribute("data-proof-label"),
                 d: node.getAttribute("d") ?? "",
-                left: box.x,
-                top: box.y,
-                right: view.width - box.x - box.width,
-                bottom: view.height - box.y - box.height,
+                left: Math.min(...corners.map((p) => p.x)),
+                top: Math.min(...corners.map((p) => p.y)),
+                right: view.width - Math.max(...corners.map((p) => p.x)),
+                bottom: view.height - Math.max(...corners.map((p) => p.y)),
               };
             },
           );

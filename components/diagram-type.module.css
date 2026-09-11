@@ -1,0 +1,59 @@
+/* Lettering for the wireframe studies, separate from article/UI typography.
+   Sizes are SVG user units unless a chart uses HTML overlays. Individual
+   studies can adjust size for their viewBox without changing the hierarchy. */
+.type {
+  font-family: var(--font-mono), monospace;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.015em;
+}
+
+.label {
+  composes: type;
+  color: #bbc8d5;
+  fill: #bbc8d5;
+  font-size: 11px;
+  letter-spacing: normal;
+}
+
+.name {
+  composes: type;
+  color: #bbc8d5;
+  fill: #bbc8d5;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detail {
+  composes: type;
+  color: #a2b1c3;
+  fill: #a2b1c3;
+  font-size: 10px;
+  letter-spacing: normal;
+}
+
+.legend {
+  composes: type;
+  color: #94a4b8;
+  fill: #94a4b8;
+  font-size: 9px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.index {
+  composes: type;
+  color: #8293a8;
+  fill: #8293a8;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.identifier {
+  composes: type;
+  color: #bfccd9;
+  fill: #bfccd9;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}

@@ -1,25 +1,29 @@
 import type { ProofFrame, ProofPath } from "./proof-geometry";
 import { blend, processScene } from "./process-geometry";
 
-/** A persistent probe follows a request route; it never creates another record. */
-function probe(paths: ProofPath[], id: string, time: number, phase: number) {
+const clamp = (value: number) => Math.max(0, Math.min(1, value));
+const progress = (value: number, start: number, end: number) =>
+  clamp((value - start) / (end - start));
+type Scene = ReturnType<typeof processScene>;
+
+/** A substantial request envelope follows the route as selection advances. */
+function probe(paths: ProofPath[], id: string, phase: number) {
   const route = paths.find((path) => path.id === id + "-path")!;
   const p = Array.from(route.d.matchAll(/-?\d+(?:\.\d+)?/g), ([n]) =>
     Number(n),
   );
-  const t = 0.5 + Math.sin(time * 0.8 + phase) * 0.36,
+  const t = clamp(phase),
     u = 1 - t;
   const x =
     u ** 3 * p[0] + 3 * u * u * t * p[2] + 3 * u * t * t * p[4] + t ** 3 * p[6];
   const y =
     u ** 3 * p[1] + 3 * u * u * t * p[3] + 3 * u * t * t * p[5] + t ** 3 * p[7];
-  const points = [
-    [x - 3, y],
-    [x, y - 3],
-    [x + 3, y],
-    [x, y + 3],
-    [x - 3, y],
-  ];
+  const dx = 3 * u * u * (p[2] - p[0]) + 6 * u * t * (p[4] - p[2]) + 3 * t * t * (p[6] - p[4]);
+  const dy = 3 * u * u * (p[3] - p[1]) + 6 * u * t * (p[5] - p[3]) + 3 * t * t * (p[7] - p[5]);
+  const length = Math.hypot(dx, dy) || 1;
+  const at = (along: number, across: number) => [x + (dx * along - dy * across) / length, y + (dy * along + dx * across) / length];
+  const points = [at(-11, -5), at(11, -5), at(11, 5), at(-11, 5), at(-11, -5)];
+  const opacity = 0.16 + Math.sin(t * Math.PI) * 0.84;
   paths.push({
     id: id + "-probe",
     d: points
@@ -27,10 +31,25 @@ function probe(paths: ProofPath[], id: string, time: number, phase: number) {
         ([px, py], i) => (i ? "L" : "M") + px.toFixed(2) + " " + py.toFixed(2),
       )
       .join(" "),
-    kind: "light",
-    opacity: route.opacity,
+    kind: "glass",
+    opacity,
     tone: "pending",
   });
+  for (let rib = 0; rib < 3; rib++) {
+    const a = at(-5 + rib * 5, -3), b = at(-5 + rib * 5, 3);
+    paths.push({
+      id: `${id}-packet-rib-${rib}`,
+      d: `M${a.map((n) => n.toFixed(2)).join(" ")} L${b.map((n) => n.toFixed(2)).join(" ")}`,
+      kind: "edge",
+      opacity,
+      tone: "pending",
+    });
+  }
+}
+
+function band(scene: Scene, id: string, x: number, y: number, width: number, height: number, opacity: number) {
+  scene.line(id, [[x, y], [x + width, y], [x + width, y + height], [x, y + height], [x, y]], "glass", opacity, "pending");
+  scene.line(id + "-edge", [[x, y], [x + width, y]], "edge", opacity, "pending");
 }
 
 /** The ledger owns C17 in every state; participants exchange requests, not originals. */
@@ -41,7 +60,8 @@ export function workOrderFrame(
 ): ProofFrame {
   const scene = processScene(time, portrait);
   const { workspace, card, box, label, arrow, line } = scene;
-  const stage = Math.max(0, Math.min(2, Math.round(selection)));
+  // Milestones follow the work: publication after its write, receipt before ack.
+  const stage = selection >= 1.74 ? 2 : selection >= 0.96 ? 1 : 0;
   const posted = blend(selection, [0, 1, 1]);
   const received = blend(selection, [0, 0, 1]);
   const maintainer = portrait
@@ -94,7 +114,7 @@ export function workOrderFrame(
     }),
   );
   [
-    ["parser-action", ["Waits for post", "Reads C17", "Receipt ack"][stage]],
+    ["parser-action", selection >= 1.99 ? "Receipt ack" : selection >= 1.74 ? "Awaiting ack" : selection > 1.02 ? "Requests receipt" : ["Waits for post", "Reads C17"][stage]],
     ["parser-receipt", stage === 2 ? "Generation 1" : "No receipt yet"],
     ["parser-responsibility", stage === 2 ? "Responsible" : "Via the ledger"],
   ].forEach(([id, text], index) =>
@@ -163,9 +183,9 @@ export function workOrderFrame(
     });
     label("ack-label", "ack", 588, 258, { kind: "small", anchor: "middle" });
   }
-  probe(scene.paths, "post-direction", time, 0);
-  probe(scene.paths, "acquire-direction", time, 1.8);
-  probe(scene.paths, "receipt-direction", time, 3.6);
+  probe(scene.paths, "post-direction", progress(selection, 0.03, 0.47));
+  probe(scene.paths, "acquire-direction", progress(selection, 1.02, 1.32));
+  probe(scene.paths, "receipt-direction", progress(selection, 1.76, 1.99));
 
   const cx = ledger.x + 20,
     cy = ledger.y + 84,
@@ -202,11 +222,21 @@ export function workOrderFrame(
     { kind: "status", tone: "pending" },
   );
 
+  const postWrite = progress(selection, 0.48, 0.96);
+  band(scene, "claim-post-write", cx + 14, cy + 160, (width - 28) * postWrite, 6, 0.22 + postWrite * 0.65);
+  band(scene, "claim-post-scan", cx + 14 + (width - 40) * postWrite, cy + 56, 12, 72, Math.sin(postWrite * Math.PI) * 0.62);
+
   const ry = cy + 194;
-  box("work-receipt", cx, ry, width, 86, {
+  const receiptWrite = progress(selection, 1.34, 1.74);
+  const receiptWidth = 26 + (width - 26) * receiptWrite;
+  box("receipt-slot", cx, ry, width, 86, { opacity: 0.19 });
+  box("work-receipt", cx + width - receiptWidth, ry, receiptWidth, 86, {
     tone: "pending",
-    opacity: 0.28 + received * 0.39,
+    opacity: 0.1 + receiptWrite * 0.82,
   });
+  band(scene, "receipt-write-progress", cx + width - 16 - (width - 32) * receiptWrite, ry + 70, (width - 32) * receiptWrite, 6, 0.2 + receiptWrite * 0.7);
+  band(scene, "receipt-write-front", cx + width - receiptWidth + 5, ry + 11, 7, 50, Math.sin(receiptWrite * Math.PI) * 0.65);
+  band(scene, "parser-ack-ready", parser.x + 25, parser.y + parser.h - 18, (parser.w - 50) * progress(selection, 1.93, 2), 5, 0.65);
   label("receipt-title", "Execution receipt", cx + 22, ry + 27, {
     kind: "label",
   });

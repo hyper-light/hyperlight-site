@@ -105,20 +105,21 @@
   padding: 22px 24px 21px;
 }
 .chartHeading {
+  composes: detail from "./diagram-type.module.css";
   display: flex;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 20px;
-  color: #aab7c9;
-  font-size: 10px;
 }
 .chartHeading span:first-child {
-  font-family: var(--font-mono), monospace;
-  color: #c3cddd;
+  color: #bbc8d5;
 }
 .plot {
   position: relative;
   height: 216px;
+}
+.values {
+  composes: label from "./diagram-type.module.css";
 }
 .figure .values {
   margin: 0;
@@ -132,7 +133,7 @@
   height: 72px;
 }
 .values dt {
-  color: #c2cede;
+  min-width: 0;
   font-size: 12px;
   line-height: 1.5;
 }
@@ -142,17 +143,12 @@
   flex-shrink: 0;
   gap: 10px;
   margin: 0;
-  color: #e2e8f0;
-  font-family: var(--font-mono), monospace;
   font-size: 13px;
-  font-variant-numeric: tabular-nums;
   line-height: 1.5;
 }
 .best {
+  composes: legend from "./diagram-type.module.css";
   min-width: 36px;
-  color: #a8b9cd;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 9px;
 }
 .bars {
   position: absolute;
@@ -165,13 +161,10 @@
   pointer-events: none;
 }
 .axis {
+  composes: detail from "./diagram-type.module.css";
   display: flex;
   justify-content: space-between;
   margin-top: -20px;
-  color: #91a0b5;
-  font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
 }
 .figure .metricDescription {
   min-height: 38px;
@@ -280,7 +273,7 @@
     padding-inline: 17px;
   }
   .values dt {
-    font-size: 10px;
+    font-size: 11px;
   }
   .values dd {
     gap: 5px;
@@ -288,7 +281,6 @@
   }
   .best {
     min-width: 0;
-    font-size: 8px;
   }
   .raw > summary {
     padding-inline: 17px;

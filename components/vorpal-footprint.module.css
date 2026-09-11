@@ -104,17 +104,16 @@
   padding: 25px 24px 22px;
 }
 .chartHeading {
+  composes: detail from "./diagram-type.module.css";
   display: flex;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 27px;
-  color: #a7b5c7;
   font-size: 11px;
   line-height: 1.5;
 }
 .chartHeading span:last-child {
   flex-shrink: 0;
-  color: #95a3b6;
 }
 .plotStage {
   display: grid;
@@ -130,6 +129,7 @@
   pointer-events: none;
 }
 .tierHeading {
+  composes: label from "./diagram-type.module.css";
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -138,19 +138,14 @@
 }
 .figure .tierHeading h5 {
   margin: 0;
-  color: #c5d0de;
+  color: inherit;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
 }
 .tierHeading > span {
-  color: #e2e8ef;
-  font-family: var(--font-mono), monospace;
   font-size: 13px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
   line-height: 1.5;
-  letter-spacing: normal;
 }
 .grid {
   display: block;
@@ -163,13 +158,14 @@
 .legendSection {
   padding: 0 24px 22px;
 }
+.legend {
+  composes: detail from "./diagram-type.module.css";
+}
 .figure .legend {
   display: flex;
   align-items: baseline;
   gap: 9px;
   margin: 22px 0 0;
-  color: #a7b4c5;
-  font-size: 10px;
   line-height: 1.7;
 }
 .legend > span {

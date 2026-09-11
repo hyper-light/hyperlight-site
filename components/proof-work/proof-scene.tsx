@@ -20,6 +20,7 @@ type SceneNodes = {
   portrait: boolean;
   time: number;
   selection: number;
+  transition: { from: number; target: number; elapsed: number };
   paths: SVGPathElement[];
   labels: SVGTextElement[];
   prism: SVGLinearGradientElement;
@@ -45,6 +46,8 @@ function paint(svg: SVGSVGElement, nodes: SceneNodes, time: number) {
     element.setAttribute("x", label.x.toFixed(2));
     element.setAttribute("y", label.y.toFixed(2));
     element.setAttribute("opacity", (label.opacity ?? 1).toFixed(3));
+    if (label.transform) element.setAttribute("transform", label.transform);
+    else element.removeAttribute("transform");
     element.style.fill = color(label.tone) ?? "";
     if (label.surface) element.dataset.proofSurface = label.surface;
     else delete element.dataset.proofSurface;
@@ -66,7 +69,22 @@ function update(svg: SVGSVGElement, time: number) {
   if (!nodes) return;
   const target = Number(svg.dataset.proofTarget);
   const delta = Math.min(0.1, Math.max(0, time - nodes.time));
-  nodes.selection += (target - nodes.selection) * (1 - Math.exp(-delta * 7));
+  const secondsPerStep = Number(svg.dataset.proofStepDuration);
+  if (secondsPerStep > 0) {
+    if (target !== nodes.transition.target) {
+      nodes.transition = { from: nodes.selection, target, elapsed: 0 };
+    }
+    const transition = nodes.transition;
+    transition.elapsed += delta;
+    const distance = Math.abs(target - transition.from);
+    const progress = distance
+      ? Math.min(1, transition.elapsed / (secondsPerStep * distance))
+      : 1;
+    const eased = progress * progress * (3 - 2 * progress);
+    nodes.selection = transition.from + (target - transition.from) * eased;
+  } else {
+    nodes.selection += (target - nodes.selection) * (1 - Math.exp(-delta * 7));
+  }
   if (Math.abs(target - nodes.selection) < 0.001) nodes.selection = target;
   nodes.time = time;
   paint(svg, nodes, time);
@@ -77,11 +95,13 @@ export function ProofScene({
   selection,
   portrait,
   paused,
+  stepDuration = 0,
 }: {
   frame: ProofFrameFunction;
   selection: number;
   portrait: boolean;
   paused: boolean;
+  stepDuration?: number;
 }) {
   const ref = useRef<SVGSVGElement>(null);
   const previousSelection = useRef(selection);
@@ -102,6 +122,11 @@ export function ProofScene({
         frame,
         portrait,
         selection: nodes?.selection ?? selection,
+        transition: nodes?.transition ?? {
+          from: selection,
+          target: selection,
+          elapsed: 0,
+        },
         time: nodes?.time ?? 0,
         paths: Array.from(
           svg.querySelectorAll<SVGPathElement>("[data-proof-path]"),
@@ -121,6 +146,7 @@ export function ProofScene({
         window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     ) {
       nodes.selection = selection;
+      nodes.transition = { from: selection, target: selection, elapsed: 0 };
       paint(svg, nodes, nodes.time);
     }
   }, [frame, portrait, paused, selection]);
@@ -134,6 +160,7 @@ export function ProofScene({
       data-proof-scene=""
       data-portrait={String(portrait)}
       data-proof-target={selection}
+      data-proof-step-duration={stepDuration}
       aria-hidden="true"
       focusable="false"
       fill="none"
@@ -195,15 +222,19 @@ export function ProofScene({
         <text
           key={label.id}
           data-proof-label={label.id}
+          data-proof-type={label.kind ?? "label"}
           data-proof-surface={label.surface}
+          transform={label.transform}
           className={
             label.kind === "heading"
               ? styles.sceneHeading
-              : label.kind === "small"
-                ? styles.sceneSmall
-                : label.kind === "status"
-                  ? styles.sceneStatus
-                  : styles.sceneLabel
+              : label.kind === "name"
+                ? styles.sceneName
+                : label.kind === "small"
+                  ? styles.sceneSmall
+                  : label.kind === "status"
+                    ? styles.sceneStatus
+                    : styles.sceneLabel
           }
           x={label.x}
           y={label.y}

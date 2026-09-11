@@ -14,10 +14,12 @@ export type ProofLabel = {
   x: number;
   y: number;
   anchor?: "start" | "middle" | "end";
-  kind?: "heading" | "label" | "small" | "status";
+  kind?: "heading" | "name" | "label" | "small" | "status";
   tone?: ProofTone;
   opacity?: number;
   surface?: string;
+  /** Surface lettering follows the same projected plane as the record beneath it. */
+  transform?: string;
 };
 
 export type ProofFrame = { paths: ProofPath[]; labels: ProofLabel[] };
