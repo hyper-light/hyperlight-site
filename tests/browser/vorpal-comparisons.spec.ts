@@ -28,6 +28,28 @@ async function settled(chart: Locator) {
     .toEqual(targets);
 }
 
+async function settledScrollLeft(region: Locator) {
+  return region.evaluate(
+    (element) =>
+      new Promise<number>((resolve, reject) => {
+        let position = element.scrollLeft;
+        let stableSince = performance.now();
+        const deadline = stableSince + 2000;
+        const sample = (time: number) => {
+          if (element.scrollLeft !== position) {
+            position = element.scrollLeft;
+            stableSince = time;
+          }
+          if (time - stableSince >= 150) return resolve(position);
+          if (time > deadline)
+            return reject(new Error("Native table scrolling did not settle"));
+          requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }),
+  );
+}
+
 test("comparison ribbon bodies breathe while their visible endpoints retain the exact scale", async ({
   page,
 }) => {
@@ -370,9 +392,8 @@ test("comparison figures fit narrow screens, keep keyboard controls, and expose 
         const before = await tableRegion.evaluate(
           (element) => element.scrollLeft,
         );
-        // Native scrolling starts asynchronously. Keep each key down until
-        // its real movement is observed; a fixed dwell can end before a
-        // traced or busy browser schedules it. Always release after failure.
+        // Keep each key down until real native movement starts, and release
+        // even after failure. The eased scroll can continue after keyup.
         await page.keyboard.down("ArrowRight");
         try {
           await expect
@@ -381,9 +402,10 @@ test("comparison figures fit narrow screens, keep keyboard controls, and expose 
         } finally {
           await page.keyboard.up("ArrowRight");
         }
-        const right = await tableRegion.evaluate(
-          (element) => element.scrollLeft,
-        );
+        // Reversing before the prior native scroll commits can leave a
+        // traced browser at its old destination. Compare completed gestures,
+        // not the first positive offset of an unfinished rightward scroll.
+        const right = await settledScrollLeft(tableRegion);
         await page.keyboard.down("ArrowLeft");
         try {
           await expect
@@ -392,6 +414,7 @@ test("comparison figures fit narrow screens, keep keyboard controls, and expose 
         } finally {
           await page.keyboard.up("ArrowLeft");
         }
+        expect(await settledScrollLeft(tableRegion)).toBeLessThan(right);
       }
       const accessibility = await new AxeBuilder({ page })
         .include(`[data-vorpal-comparisons="${kind}"]`)
