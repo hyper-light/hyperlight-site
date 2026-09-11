@@ -63,6 +63,28 @@ test("published posts are sorted, project-filtered, and exclude drafts and futur
   assert.equal(formatDate("2026-09-10"), "September 10, 2026");
 });
 
+test("same-day order is explicit, defaults to zero, and never overrides publication dates", (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write("z-first.md", "order: -1\n");
+  posts.write("a-last.md", "order: 1\n");
+  posts.write("b-default.md");
+  posts.write("c-default.mdx");
+  posts.write("d-zero.md", "order: 0\n");
+  fs.writeFileSync(
+    path.join(posts.directory, "newer.md"),
+    '---\ntitle: Newer\ndescription: Newest by date\ndate: "2026-09-10"\ncategory: Notes\norder: 100\n---\nNewer.\n',
+  );
+  fs.writeFileSync(
+    path.join(posts.directory, "older.md"),
+    '---\ntitle: Older\ndescription: Oldest by date\ndate: "2026-09-08"\ncategory: Notes\norder: -100\n---\nOlder.\n',
+  );
+  assert.deepEqual(
+    getPosts(posts).map((post) => post.slug),
+    ["newer", "z-first", "b-default", "c-default", "d-zero", "a-last", "older"],
+  );
+});
+
 test("frontmatter validation rejects impossible dates and wrong metadata with the filename", (t) => {
   const posts = fixture();
   t.after(posts.cleanup);
@@ -77,6 +99,13 @@ test("frontmatter validation rejects impossible dates and wrong metadata with th
     ["description: ''", /description.*nonempty string/],
     ["title: 42", /title.*nonempty string/],
     ["project: '../private'", /project.*kebab-case/],
+    ['order: "1"', /order.*safe integer/],
+    ["order: 0.5", /order.*safe integer/],
+    ["order: null", /order.*safe integer/],
+    ["order: true", /order.*safe integer/],
+    ["order: .inf", /order.*safe integer/],
+    ["order: .nan", /order.*safe integer/],
+    ["order: 9007199254740992", /order.*safe integer/],
   ] as const;
 
   for (const [replacement, expected] of cases) {

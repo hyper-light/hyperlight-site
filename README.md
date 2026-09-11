@@ -55,6 +55,8 @@ Write Markdown here, including links, lists, tables, and fenced code blocks.
 
 `title`, `description`, `date`, and `category` are required. The date must be a real calendar date in `YYYY-MM-DD` format. `project` is optional and connects the post to a project slug from `lib/projects.ts`. `featured` and `draft` are optional booleans that default to `false`.
 
+Posts appear newest first. Optional `order` is a safe integer that controls ordering within the same date: lower values appear first, and omitted values default to `0`. For example, `order: 1` places an announcement below other posts from that day without changing its publication date. Remaining ties use the URL slug alphabetically.
+
 The filename becomes the URL slug: `a-better-way-to-build.md` or `a-better-way-to-build.mdx` appears at `/blog/a-better-way-to-build`. Use lowercase words separated by hyphens. Frontmatter does not need a `slug` field; if present, it must match the filename. Keep only one file per slug: duplicate `.md`/`.mdx` names fail validation, including drafts. Renaming an existing post from `.md` to `.mdx` does not change its URL.
 
 Drafts and future-dated posts are excluded from listings and public article routes. Dates use UTC. The site reads posts when it builds, so publish a new build when a scheduled date arrives. Invalid metadata fails with the offending filename, including in drafts.

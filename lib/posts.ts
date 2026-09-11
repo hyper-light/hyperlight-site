@@ -41,6 +41,7 @@ export type PostOptions = {
 
 type SourcePost = {
   summary: PostSummary;
+  order: number;
   content: string;
   draft: boolean;
   format: "md" | "mdx";
@@ -78,6 +79,15 @@ function booleanField(
   if (typeof value !== "boolean")
     invalid(filename, `"${key}" must be true or false.`);
   return value;
+}
+
+/** Lower values appear first when publication dates match. */
+function orderField(data: Record<string, unknown>, filename: string): number {
+  if (data.order === undefined) return 0;
+  if (typeof data.order !== "number" || !Number.isSafeInteger(data.order)) {
+    invalid(filename, '"order" must be a safe integer.');
+  }
+  return data.order;
 }
 
 function calendarDate(
@@ -163,6 +173,7 @@ function readSource(directory: string, filename: string): SourcePost {
       featured: booleanField(data, "featured", filename),
       readingTime: `${Math.max(1, Math.ceil(words / 220))} min read`,
     },
+    order: orderField(data, filename),
     draft: booleanField(data, "draft", filename),
     content: parsed.content,
     format: extension === ".mdx" ? "mdx" : "md",
@@ -205,6 +216,7 @@ function publishedSources(options: PostOptions = {}): SourcePost[] {
     .sort(
       (a, b) =>
         b.summary.date.localeCompare(a.summary.date) ||
+        a.order - b.order ||
         a.summary.slug.localeCompare(b.summary.slug),
     );
 }

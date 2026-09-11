@@ -1160,6 +1160,46 @@ html[data-motion="paused"] .study-stage {
 .blog-catalog {
   min-height: 350px;
 }
+.blog-catalog .catalog-toolbar {
+  flex-wrap: wrap;
+}
+.blog-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.blog-sort {
+  position: relative;
+  flex: 0 0 150px;
+  min-width: 0;
+  color: #9499a5;
+}
+.blog-sort select {
+  appearance: none;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 34px 10px 12px;
+  border: 1px solid #303239;
+  border-radius: 5px;
+  color: #e3e4e9;
+  background: #08090a;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.blog-sort select:focus-visible {
+  border-color: #a5a0bf;
+  outline: 2px solid rgb(165 160 191 / 35%);
+  outline-offset: 2px;
+}
+.blog-sort > svg {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
 
 /* Project detail */
 .back-link {
@@ -2232,6 +2272,14 @@ html[data-motion="paused"] .study-stage {
   .search-field input {
     font-size: 16px;
   }
+  .blog-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+  .blog-sort select {
+    font-size: 16px;
+  }
   .catalog-note {
     align-items: start;
     font-size: 10px;
@@ -2483,7 +2531,8 @@ html[data-motion="paused"] .study-stage {
     color: #bdc1cb;
   }
   .project-card,
-  .search-field {
+  .search-field,
+  .blog-sort select {
     border-color: #717582;
   }
 }

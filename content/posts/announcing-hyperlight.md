@@ -2,6 +2,7 @@
 title: "Announcing Hyperlight"
 description: "An open-source, modular platform for agents."
 date: "2026-09-10"
+order: 1
 category: "Announcements"
 featured: false
 draft: false

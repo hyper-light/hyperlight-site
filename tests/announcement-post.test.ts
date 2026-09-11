@@ -11,6 +11,10 @@ test("Hyperlight announcement replaces the rough article and retains its incomin
   const options = { now: new Date("2026-09-10T12:00:00Z") };
   const posts = getPosts(options);
   assert.ok(posts.some((post) => post.slug === slug));
+  assert.deepEqual(
+    posts.map((post) => post.slug),
+    ["agentic-proof-of-work", "introducing-vorpal", slug],
+  );
   assert.ok(
     !posts.some((post) => post.slug === "tools-that-make-the-work-clearer"),
   );
