@@ -15,6 +15,7 @@ import { LedgerShards } from "@/components/proof-work/ledger-shards";
 import { ReplicaFailover } from "@/components/proof-work/replica-failover";
 import { LatencyProbing } from "@/components/proof-work/latency-probing";
 import { LivenessGuard } from "@/components/proof-work/liveness-guard";
+import { ObjectLifecycles } from "@/components/proof-work/object-lifecycles";
 
 /** Repository-owned components available directly in every .mdx article. */
 export const articleComponents = {
@@ -34,4 +35,5 @@ export const articleComponents = {
   ReplicaFailover,
   LatencyProbing,
   LivenessGuard,
+  ObjectLifecycles,
 } satisfies MDXComponents;

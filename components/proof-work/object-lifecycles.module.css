@@ -1,0 +1,90 @@
+.explorer {
+  container-type: inline-size;
+  margin: 32px 0 48px;
+}
+.explorer figure {
+  margin: 0;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 20px;
+  padding: 16px 24px;
+  border-top: 1px solid #222a33;
+  border-bottom: 1px solid #222a33;
+}
+.controls p {
+  margin: 0;
+  color: #bbc5d0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.outcome {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #aab6c5;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+}
+.outcome select {
+  min-width: 0;
+  max-width: 220px;
+  padding: 9px 28px 9px 12px;
+  border: 1px solid #34404d;
+  border-radius: 5px;
+  background: #0d1219;
+  color: #d1dce7;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 12px;
+}
+.outcome select:focus-visible {
+  outline: 2px solid #bfd0e4;
+  outline-offset: 3px;
+}
+.explorer [data-proof-surface="claim-spacecraft-id"] {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 450;
+  letter-spacing: 0.04em;
+  paint-order: stroke fill;
+  stroke: #0a1018;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  fill: #d0dde7;
+}
+.explorer [data-proof-steps] > button {
+  padding-inline: 6px;
+  font-size: 12px;
+}
+@container (max-width: 700px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .explorer [data-proof-steps] {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-content: start;
+    min-height: 98px;
+  }
+  .explorer [data-proof-steps] > button {
+    font-size: 11px;
+  }
+}
+@container (max-width: 560px) {
+  .controls {
+    padding: 14px 17px;
+  }
+}
+@container (max-width: 340px) {
+  .explorer [data-proof-steps] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-height: 146px;
+  }
+}

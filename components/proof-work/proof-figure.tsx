@@ -17,6 +17,8 @@ import styles from "./proof-work.module.css";
 
 export type ProofStep = {
   label: string;
+  /** Seconds to enter this stage during autoplay; manual seeks have their own cap. */
+  transitionDuration?: number;
   shortLabel?: string;
   title: string;
   description: string;
@@ -37,6 +39,10 @@ export function ProofFigure({
   caption,
   autoAdvance = false,
   stepDuration = 0,
+  seekDuration,
+  controls,
+  reserveSteps = [],
+  resetKey = id,
 }: {
   id: string;
   eyebrow: string;
@@ -48,11 +54,29 @@ export function ProofFigure({
   autoAdvance?: boolean;
   /** Seconds per meaningful lifecycle step; zero keeps the short selection morph. */
   stepDuration?: number;
+  /** Cap manual seeks without speeding up the narrated autoplay sequence. */
+  seekDuration?: number;
+  /** Optional selectors belong inside the figure, above its fixed scene. */
+  controls?: ReactNode;
+  /** Reserve the tallest explanation across sibling views without running hidden scenes. */
+  reserveSteps?: ProofStep[];
+  resetKey?: string;
 }) {
   const [selected, setSelected] = useState(0);
   const [sequence, setSequence] = useState(autoAdvance);
   const [replay, setReplay] = useState(0);
+  const [previousKey, setPreviousKey] = useState(resetKey);
+  // Keep the frame and selector DOM mounted when changing scenarios.
+  // Reset before committing so an old selected index never reaches a new scene.
+  if (previousKey !== resetKey) {
+    setPreviousKey(resetKey);
+    setSelected(0);
+    setSequence(autoAdvance);
+    setReplay(0);
+  }
   const stage = useRef<HTMLDivElement>(null);
+  const activeStepDuration =
+    steps[selected]?.transitionDuration ?? stepDuration;
   const { paused, reduced, toggle } = useMotionPreference();
   useEffect(() => {
     const element = stage.current;
@@ -64,7 +88,7 @@ export function ProofFigure({
       if (visible && !document.hidden)
         timer = setTimeout(
           () => setSelected((value) => Math.min(value + 1, steps.length - 1)),
-          5000,
+          Math.max(5000, (activeStepDuration + 2) * 1000),
         );
     };
     const observer = new IntersectionObserver(
@@ -81,7 +105,15 @@ export function ProofFigure({
       observer.disconnect();
       document.removeEventListener("visibilitychange", synchronize);
     };
-  }, [sequence, paused, selected, steps.length, replay]);
+  }, [
+    sequence,
+    paused,
+    selected,
+    steps.length,
+    replay,
+    resetKey,
+    activeStepDuration,
+  ]);
   const select = (index: number) => {
     setSequence(false);
     setSelected(index);
@@ -152,25 +184,33 @@ export function ProofFigure({
           </button>
         </div>
       </header>
+      {controls}
       <div className={styles.stage} ref={stage}>
         <ProofScene
-          key={`landscape-${replay}`}
+          key={`landscape-${resetKey}-${replay}`}
           frame={frame}
           selection={selected}
           portrait={false}
           paused={paused}
-          stepDuration={stepDuration}
+          stepDuration={activeStepDuration}
+          transitionLimit={sequence ? undefined : seekDuration}
         />
         <ProofScene
-          key={`portrait-${replay}`}
+          key={`portrait-${resetKey}-${replay}`}
           frame={frame}
           selection={selected}
           portrait
           paused={paused}
-          stepDuration={stepDuration}
+          stepDuration={activeStepDuration}
+          transitionLimit={sequence ? undefined : seekDuration}
         />
       </div>
-      <div className={tabs.tabs} role="tablist" aria-label={title}>
+      <div
+        className={tabs.tabs}
+        role="tablist"
+        aria-label={title}
+        data-proof-steps=""
+      >
         {steps.map((step, index) => (
           <button
             key={step.label}
@@ -195,6 +235,16 @@ export function ProofFigure({
         ))}
       </div>
       <div className={styles.panels}>
+        {reserveSteps.map((step, index) => (
+          <section
+            key={`reserve-${index}`}
+            className={styles.panel}
+            aria-hidden="true"
+            inert
+          >
+            <StepDetails step={step} />
+          </section>
+        ))}
         {steps.map((step, index) => (
           <section
             key={step.label}
@@ -207,22 +257,30 @@ export function ProofFigure({
             data-active={String(selected === index)}
             tabIndex={selected === index ? 0 : -1}
           >
-            <h4>{step.title}</h4>
-            <p>{step.description}</p>
-            {step.facts && (
-              <dl className={styles.facts}>
-                {step.facts.map((fact) => (
-                  <div key={fact.label} data-tone={fact.tone}>
-                    <dt>{fact.label}</dt>
-                    <dd>{fact.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
+            <StepDetails step={step} />
           </section>
         ))}
       </div>
       <figcaption className={styles.caption}>{caption}</figcaption>
     </figure>
+  );
+}
+
+function StepDetails({ step }: { step: ProofStep }) {
+  return (
+    <>
+      <h4>{step.title}</h4>
+      <p>{step.description}</p>
+      {step.facts && (
+        <dl className={styles.facts}>
+          {step.facts.map((fact) => (
+            <div key={fact.label} data-tone={fact.tone}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </>
   );
 }

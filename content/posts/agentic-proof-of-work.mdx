@@ -17,6 +17,14 @@ A shared ledger keeps that record. The maintainer posts a claim describing the f
 
 That ledger is the **agentic proof of work**: the authoritative record of what was requested, what was delivered, and whether it met the declared requirements. [Ledger model.][ledger]
 
+## Object Lifecycles
+
+These lifecycles describe a two-party exchange. The claimant posts a claim; the respondent takes responsibility, produces artifacts, and returns a closing testament. The claimant records receipt, and the designated evaluators check the returned evidence. The ledger records those actions and derives whether the claim's requirements have been met.
+
+Follow the whole exchange below: claim C17 travels to the respondent, which produces patch A/hA and authors a separate testament, T1. T1 returns to the claimant with its evidence, then the designated evaluators check that evidence. A testament can report “Complete” while the claim remains unsatisfied. Alternate outcomes show rejected work, execution errors, and missing evidence. [Object transitions.][object-states]
+
+<ObjectLifecycles />
+
 ## Claim Requirements
 
 A Unicode escape needs four hexadecimal digits, but the parser accepts `"\u12"`. The fix must reject that incomplete escape while preserving valid strings.
@@ -331,7 +339,6 @@ Custody currently verifies the placement's required copies; independently checki
 Claims, testaments, artifacts, and validators compose to form a powerful system that allows multiple agents to achieve better user alignment and quality work while maintaining agentic independence and dynamism. The proposed protocol and architecture here likewise allow for easy distribution and deployment, whether on a single laptop or in datacenters across the world.
 
 Work to implement the protocol is currently underway, with a Rust based reference implementaton set for beta release soon. Stay tuned for further updates and announcements as we work to develop, refine, and implement the protocol.
-
 
 [ledger]: https://github.com/hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md
 [peer]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md

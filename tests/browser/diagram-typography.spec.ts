@@ -8,13 +8,17 @@ async function expectDiagramLettering(labels: Locator) {
         text: element.textContent,
         family: style.fontFamily,
         weight: style.fontWeight,
+        expectedWeight:
+          element.getAttribute("data-proof-surface") === "claim-spacecraft-id"
+            ? "450"
+            : "400",
       };
     }),
   );
   expect(typography.length).toBeGreaterThan(0);
   for (const label of typography) {
     expect(label.family, label.text ?? "").toContain("Geist Mono Variable");
-    expect(label.weight, label.text ?? "").toBe("400");
+    expect(label.weight, label.text ?? "").toBe(label.expectedWeight);
   }
 }
 
@@ -25,7 +29,7 @@ test("all proof scenes use instrument lettering without changing article typogra
   await page.goto("/blog/agentic-proof-of-work");
   await page.evaluate(() => document.fonts.ready);
   const figures = page.locator("[data-proof-figure]");
-  await expect(figures).toHaveCount(9);
+  await expect(figures).toHaveCount(10);
   for (const figure of await figures.all()) {
     await expectDiagramLettering(
       figure.locator("[data-proof-scene]:visible text"),

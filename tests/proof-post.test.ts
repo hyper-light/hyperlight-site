@@ -27,7 +27,7 @@ test("Agentic Proof of Work replaces the old title and keeps its incoming URL", 
   });
 });
 
-test("proof article renders all nine registered illustrations with its concrete examples", async () => {
+test("proof article renders the lifecycle explorer and nine focused illustrations", async () => {
   const post = await getPost("agentic-proof-of-work");
   assert.ok(post);
   assert.equal(post.format, "mdx");
@@ -40,6 +40,7 @@ test("proof article renders all nine registered illustrations with its concrete 
   const html = renderToStaticMarkup(
     createElement(Content, {
       components: {
+        ObjectLifecycles: illustration("object-lifecycles"),
         WorkOrder: illustration("work-order"),
         EvidenceCassette: illustration("evidence-cassette"),
         ValidationFixture: illustration("validation-fixture"),
@@ -52,7 +53,7 @@ test("proof article renders all nine registered illustrations with its concrete 
       },
     }),
   );
-  assert.equal((html.match(/data-example=/g) ?? []).length, 9);
+  assert.equal((html.match(/data-example=/g) ?? []).length, 10);
   for (const term of [
     "Claim C17",
     "artifact A",

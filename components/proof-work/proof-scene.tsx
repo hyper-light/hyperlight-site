@@ -77,9 +77,12 @@ function update(svg: SVGSVGElement, time: number) {
     const transition = nodes.transition;
     transition.elapsed += delta;
     const distance = Math.abs(target - transition.from);
-    const progress = distance
-      ? Math.min(1, transition.elapsed / (secondsPerStep * distance))
-      : 1;
+    const limit = Number(svg.dataset.proofTransitionLimit);
+    const duration = Math.min(
+      secondsPerStep * distance,
+      limit > 0 ? limit : Infinity,
+    );
+    const progress = distance ? Math.min(1, transition.elapsed / duration) : 1;
     const eased = progress * progress * (3 - 2 * progress);
     nodes.selection = transition.from + (target - transition.from) * eased;
   } else {
@@ -96,12 +99,15 @@ export function ProofScene({
   portrait,
   paused,
   stepDuration = 0,
+  transitionLimit,
 }: {
   frame: ProofFrameFunction;
   selection: number;
   portrait: boolean;
   paused: boolean;
   stepDuration?: number;
+  /** Optional duration cap for direct stage selection, independent of distance. */
+  transitionLimit?: number;
 }) {
   const ref = useRef<SVGSVGElement>(null);
   const previousSelection = useRef(selection);
@@ -164,6 +170,7 @@ export function ProofScene({
       data-portrait={String(portrait)}
       data-proof-target={selection}
       data-proof-step-duration={stepDuration}
+      data-proof-transition-limit={transitionLimit}
       aria-hidden="true"
       focusable="false"
       fill="none"

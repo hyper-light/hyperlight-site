@@ -141,7 +141,7 @@ async function openPost(page: Page) {
   const response = await page.goto("/blog/agentic-proof-of-work");
   expect(response?.status()).toBe(200);
   await page.evaluate(() => document.fonts.ready);
-  await expect(page.locator("[data-proof-figure]")).toHaveCount(9);
+  await expect(page.locator("[data-proof-figure]")).toHaveCount(10);
   return errors;
 }
 
