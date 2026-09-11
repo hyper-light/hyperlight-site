@@ -326,13 +326,13 @@ State-range movement is implemented, but current voters and extra holders still 
 
 Custody currently verifies the placement's required copies; independently checking those copies against its promised failure domains remains unfinished. These limits matter when selecting the failures a deployment can actually tolerate. [Custody qualification.][custody-limits]
 
-## Conclusion
+## Apply it to your workflow
 
-Agentic proof of work connects a task's requirements to the evidence used to accept it. The claim defines the agreement; the testament binds the respondent's account to immutable artifacts. Validators check that evidence, and the ledger records whether the required checks, receipts, and dependency conditions have been met. Acceptance is a separate decision from the agent's completion report, with a basis that another participant can inspect.
+Start with a task you already delegate to an agent. Decide what would make the result acceptable before work begins, then retain the exact artifacts and the evaluations that name them. Give a fresh agent access to the claim, closing testament, and evidence. Can it tell what was accepted, why, and what still needs work without reading the original conversation?
 
-The ledger keeps that agreement usable as the system grows and participants fail or change. Independent sessions and sharded state ranges distribute serving work while preserving an authoritative order for each session. Replication and artifact custody protect both the decisions and their evidence. Latency-aware probing, Lifeguard, and bounded extensions reduce unnecessary disruption; leader authority and quorum rules determine whether a session can commit further work.
+Then test what happens when a participant or machine disappears. In a test deployment, interrupt an agent or restart a replica. Check that the next participant can recover the outstanding obligations and retrieve the evidence behind accepted work. As you add hosts or regions, choose the failures the deployment must tolerate and test those guarantees.
 
-The strength of the result still depends on the requirements, the checks, and the deployment's failure limits. Making those explicit lets agents delegate and build on each other's work with a durable record of what was accepted and why.
+That gives teams a way to carry longer-running work across agents, machines, and regions while keeping its requirements and evidence intact. The next agent can build on a checked result instead of starting another investigation into what happened. Delegation should leave you with work you can use—and the evidence to judge it.
 
 [ledger]: https://github.com/hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md
 [peer]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md
