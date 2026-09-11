@@ -19,10 +19,6 @@ Our goal is infrastructure that works with your choice of agents and models, fro
 
 [Focal](/projects/focal) and [Slates](/projects/slates) are in development. Focal records the requirements, evidence, and acceptance decisions behind collaborative work. Slates gives agents isolated workspaces and merges their changes while identifying conflicts. Both have working implementations available from source; neither has a release yet.
 
-## Moving Forward
-
-[Hecate](/projects/hecate) is the architecture for a multi-agent coding harness that brings isolation, coordination, and validation together. It's currently in design. Our broader design work covers compute, storage, identity, secrets, artifact registries, caching, queues, and notifications.
-
 Hyperlight is an independent project, not a company. We're committed to keeping its tools free and open source, and to making them useful beyond any one model or agent framework. We'll share releases, designs, and engineering updates as the work progresses.
 
 Explore the [projects](/projects) and follow development on [GitHub](https://github.com/hyper-light).

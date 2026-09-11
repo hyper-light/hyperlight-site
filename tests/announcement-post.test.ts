@@ -25,13 +25,16 @@ test("Hyperlight announcement replaces the rough article and retains its incomin
   if (post.format !== "md") return;
   assert.deepEqual(
     post.headings.map((heading) => heading.text),
-    ["The first projects", "Moving Forward"],
+    ["The first projects"],
   );
-  for (const project of ["vorpal", "hyperscale", "focal", "slates", "hecate"]) {
+  for (const project of ["vorpal", "hyperscale", "focal", "slates"]) {
     assert.ok(getProject(project), `unknown announcement project: ${project}`);
     assert.ok(post.html.includes(`href="/projects/${project}"`));
   }
   assert.match(post.html, /href="\/blog\/introducing-vorpal"/);
   assert.ok(await getPost("introducing-vorpal", options));
-  assert.doesNotMatch(post.html, /Give each question a home|visual language/);
+  assert.doesNotMatch(
+    post.html,
+    /Give each question a home|visual language|Moving Forward|Hecate/,
+  );
 });
