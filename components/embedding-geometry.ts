@@ -1,4 +1,11 @@
-/** A stable, illustrative projection of the three embedding processes, not model output. */
+import {
+  embeddingGpuFrame,
+  gpuCellPoint,
+  gpuMemoryPoint,
+  gpuTilePoint,
+} from "./embedding-gpu-geometry";
+
+/** A complete GPU-shaped teaching scene, not a hardware requirement. */
 export type EmbeddingMode = "lexical" | "learned" | "neural";
 export type Blend = [number, number, number];
 type V3 = [number, number, number];
@@ -8,410 +15,625 @@ export const EMBEDDING_MODES: EmbeddingMode[] = [
   "learned",
   "neural",
 ];
-const TAU = Math.PI * 2;
-const hashRoutes = lexicalExample().routes;
+export const EMBEDDING_CYCLE = 8;
+export type EmbeddingPathKind = "input" | "compute" | "reduce" | "output";
+export type EmbeddingPath = {
+  id: string;
+  kind: EmbeddingPathKind;
+  d: string;
+  activity: number;
+  weight: number;
+  mode?: EmbeddingMode;
+  start: Point;
+  end: Point;
+  token?: string;
+  bucket?: number;
+  sign?: number;
+};
+export type EmbeddingSignal = {
+  id: string;
+  pathId: string;
+  kind: EmbeddingPathKind;
+  point: Point;
+  /** Normalized projected path length, eased over the route's time window. */
+  progress: number;
+  opacity: number;
+  weight: number;
+  mode?: EmbeddingMode;
+  radius: number;
+};
+export type EmbeddingLabel = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  anchor: "start" | "middle" | "end";
+  kind: "token" | "port" | "vector";
+  opacity: number;
+};
+export type EmbeddingFrame = ReturnType<typeof embeddingGpuFrame> & {
+  cellActivity: number[];
+  cellOperations: ("add" | "subtract" | "multiply" | "none")[];
+  /** Transient arithmetic, separate from the cell's held-result illumination. */
+  operationActivity: number[];
+  /** Fade glyphs through zero when the dominant operation family changes. */
+  operationOpacity: number;
+  partActivity: Record<string, number>;
+  paths: EmbeddingPath[];
+  signals: EmbeddingSignal[];
+  labels: EmbeddingLabel[];
+  phase: {
+    stage: "receive" | "process" | "emit";
+    progress: number;
+    cycle: number;
+  };
+};
+const example = lexicalExample();
+const clamp = (value: number) => Math.max(0, Math.min(1, value));
+const smooth = (value: number) => value * value * (3 - 2 * value);
 const fmt = (value: number) => value.toFixed(2);
+const path = (points: Point[]) =>
+  points
+    .map(
+      (point, index) => `${index ? "L" : "M"}${fmt(point.x)},${fmt(point.y)}`,
+    )
+    .join("");
 
 export function modeBlend(mode: EmbeddingMode): Blend {
   return EMBEDDING_MODES.map((key) => Number(key === mode)) as Blend;
 }
 
-function mix(points: V3[], blend: Blend): V3 {
-  return [0, 1, 2].map((axis) =>
-    points.reduce((sum, point, i) => sum + point[axis] * blend[i], 0),
-  ) as V3;
-}
-
-function path(points: Point[], close = false) {
-  return (
-    points.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join("") +
-    (close ? "Z" : "")
-  );
-}
-
-function project(
-  [x, y, z]: V3,
-  time: number,
-  portrait: boolean,
-  center?: V3,
-): Point {
-  const yaw = -0.5 + Math.sin(time * 0.21) * 0.17;
-  const pitch = -0.27 + Math.sin(time * 0.17) * 0.1;
-  const rx = x * Math.cos(yaw) + z * Math.sin(yaw);
-  const rz = -x * Math.sin(yaw) + z * Math.cos(yaw);
-  const ry = y * Math.cos(pitch) - rz * Math.sin(pitch);
-  const depth = y * Math.sin(pitch) + rz * Math.cos(pitch);
-  const roll = -0.075 + Math.sin(time * 0.19) * 0.025;
-  const scale = ((portrait ? 0.8 : 1) * 1100) / (1100 - depth);
-  return {
-    x:
-      (center?.[0] ?? (portrait ? 210 : 400)) +
-      (rx * Math.cos(roll) - ry * Math.sin(roll)) * scale,
-    y:
-      (center?.[1] ?? (portrait ? 300 : 250)) +
-      (rx * Math.sin(roll) + ry * Math.cos(roll)) * scale,
-    depth,
-  };
-}
-
-/** Fixed topology throughout mode changes prevents vertices popping in or being replaced. */
-function surfacePoint(
-  layer: number,
-  u: number,
-  v: number,
-  time: number,
-  blend: Blend,
-): V3 {
-  const depth = layer - 3.5;
-  const ripple = Math.sin(u * 2.4 + v * 1.8 + time * 0.58);
-  const lexical: V3 = [
-    u * 94,
-    v * 104,
-    depth * 3.6 + u * u * 10 - v * v * 15 + ripple * 2.8,
-  ];
-  const factor = layer < 3 ? 0 : layer < 5 ? 1 : 2;
-  const learned: V3 = [
-    [-66, -2, 67][factor] + u * [42, 13, 37][factor],
-    v * [102, 73, 102][factor] + Math.sin(time * 0.36 + factor * 0.7) * 4,
-    [-28, 20, 44][factor] +
-      depth * 5 +
-      Math.sin(u * 1.8 + time * 0.36) * 10 +
-      v * v * 5,
-  ];
-  const neural: V3 = [
-    u * 61 + depth * 13,
-    v * 89 + Math.sin(u * 2 + time * 0.42 + layer * 0.3) * 7,
-    depth * 18 + Math.cos(v * 2.2 + time * 0.35) * 12 + Math.sin(u * 2.6) * 7,
-  ];
-  return mix([lexical, learned, neural], blend);
-}
-
-function perimeter(inset = 0): [number, number][] {
-  const points: [number, number][] = [];
-  const limit = 1 - inset;
-  for (let edge = 0; edge < 4; edge++) {
-    for (let i = 0; i < 16; i++) {
-      const t = (-1 + (i * 2) / 15) * limit;
-      const [u, v] = [
-        [t, -limit],
-        [limit, t],
-        [-t, limit],
-        [-limit, -t],
-      ][edge];
-      points.push([u, v]);
-    }
-  }
-  return points;
-}
-
-function material(
-  layer: number,
-  time: number,
-  blend: Blend,
-  portrait: boolean,
-) {
-  const point = (u: number, v: number, depth = 0) => {
-    const p = surfacePoint(layer, u, v, time, blend);
-    return project([p[0], p[1], p[2] + depth], time, portrait);
-  };
-  // Two real surfaces, joined at their common perimeter, make the thin glass
-  // readable as a volume. They do not depend on stroke tricks or SVG offsets.
-  const outer = perimeter();
-  const front = outer.map(([u, v]) => point(u, v));
-  const back = outer.map(([u, v]) => point(u, v, -4.5));
-  const inset = perimeter(0.055).map(([u, v]) => point(u, v, 0.5));
-  const ribs = outer
-    .filter((_, i) => i % 4 === 0)
-    .map(([u, v]) => path([point(u, v), point(u, v, -4.5)]))
-    .join("");
-  // Small open facets have a common local surface: the etched cell corners,
-  // visible bucket centres and highlighted routes cannot drift apart.
-  const etching = Array.from({ length: 32 }, (_, i) => {
-    const index = layer * 32 + i;
-    const location = cellSurface(index, time, blend);
-    const center = location.center;
-    const du = location.across;
-    const dv = location.down;
-    const corner = (x: number, y: number) =>
-      project(
-        [
-          center[0] + du[0] * x + dv[0] * y,
-          center[1] + du[1] * x + dv[1] * y,
-          center[2] + du[2] * x + dv[2] * y,
-        ],
-        time,
-        portrait,
-      );
-    return path(
-      [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)],
-      true,
-    );
-  }).join("");
-  // This travelling reflection is evaluated on the same surface, including
-  // its curvature. Its fixed sample count gives mode transitions no seams.
-  const sheen = Array.from({ length: 25 }, (_, index) => {
-    const v = -0.92 + (index / 24) * 1.84;
-    const u = Math.sin(time * 0.42 + layer * 0.24 + v * 0.4) * 0.8;
-    return point(u, v, 0.6);
-  });
-  return {
-    front: path(front, true),
-    back: path(back, true),
-    wall: path([...front, ...back.toReversed()], true),
-    rim: path(inset, true),
-    ribs,
-    etching,
-    sheen: path(sheen),
-  };
-}
-
-function cellSurface(index: number, time: number, blend: Blend) {
-  const row = Math.floor(index / 16),
-    column = index % 16;
-  const locations = [
-    { layer: 7, u: (column - 7.5) / 8, v: (row - 7.5) / 8 },
-    {
-      layer: Math.floor(column / 2),
-      u: ((column % 2) - 0.5) * 0.9,
-      v: (row - 7.5) / 8,
-    },
-    {
-      layer: column % 8,
-      u: (Math.floor(column / 8) - 0.5) * 1.2,
-      v: (row - 7.5) / 8,
-    },
-  ];
-  const sample = (du = 0, dv = 0) =>
-    mix(
-      locations.map((location, mode) =>
-        surfacePoint(
-          location.layer,
-          location.u + du,
-          location.v + dv,
-          time,
-          modeBlend(EMBEDDING_MODES[mode]),
-        ),
-      ),
-      blend,
-    );
-  const center = sample();
-  const u = sample(0.038, 0),
-    v = sample(0, 0.038);
-  return {
-    center,
-    across: u.map((value, axis) => value - center[axis]) as V3,
-    down: v.map((value, axis) => value - center[axis]) as V3,
-  };
-}
-
-export function embeddingFrame(time: number, blend: Blend, portrait = false) {
-  const materials = Array.from({ length: 8 }, (_, i) =>
-    material(i, time, blend, portrait),
-  );
-  const surfaces = materials.map((item) => item.front);
-  const lines = Array.from({ length: 48 }, (_, i) => {
-    const layer = Math.floor(i / 6);
-    const row = i % 6;
-    return path(
-      Array.from({ length: 21 }, (_, j) => {
-        const span = -1 + j / 10,
-          line = ((i % 16) - 7.5) / 8;
-        const lexical = surfacePoint(
-          7,
-          i < 16 ? span : line,
-          i < 16 ? line : span,
-          time,
-          [1, 0, 0],
-        );
-        const learned = surfacePoint(
-          layer,
-          span,
-          -0.85 + row * 0.34,
-          time,
-          [0, 1, 0],
-        );
-        const neural = surfacePoint(
-          layer,
-          span,
-          -0.85 + row * 0.34,
-          time,
-          [0, 0, 1],
-        );
-        return project(mix([lexical, learned, neural], blend), time, portrait);
-      }),
-    );
-  });
-  const cells = Array.from({ length: 256 }, (_, i) =>
-    project(cellSurface(i, time, blend).center, time, portrait),
-  );
-  const connections = Array.from({ length: 64 }, (_, i) => {
-    const row = (i % 8) * 2,
-      layer = Math.floor(i / 8);
-    const a = cells[row * 16 + layer],
-      b = cells[((row + 2) % 16) * 16 + ((layer + 1) % 8) + 8];
-    return `M${fmt(a.x)},${fmt(a.y)}Q${fmt((a.x + b.x) / 2 + Math.sin(time * 0.4 + i) * 7)},${fmt((a.y + b.y) / 2 - 9)} ${fmt(b.x)},${fmt(b.y)}`;
-  });
-  const inputs = ["resolve", "import", "path"].map((word, i) => {
-    const center: V3 = portrait
-      ? [114 + i * 96, 65 + Math.sin(time * 0.5 + i) * 5, 0]
-      : [142, 175 + i * 73 + Math.sin(time * 0.5 + i) * 5, 0];
-    const points = Array.from({ length: 25 }, (_, j): V3 => {
-      const u = j / 24;
-      return [
-        -53 + u * 106,
-        17 + Math.sin(u * Math.PI * 2 + time * 0.3 + i) * 3,
-        Math.sin(u * Math.PI) * 14,
-      ];
-    });
-    const projected = points.map((p) => project(p, time, portrait, center));
-    const lower = points.map(([x, y, z]) =>
-      project([x, y + 4.2, z - 3], time, portrait, center),
-    );
-    const outlet = projected[projected.length - 1];
-    const previous = projected[projected.length - 2];
-    const dx = outlet.x - previous.x;
-    const dy = outlet.y - previous.y;
-    const length = Math.hypot(dx, dy);
+/** Board, packages, contacts, traces, sockets and signal endpoints share this pose.
+ * Portrait rotates the same board into a tall card; it does not reshape the PCB.
+ */
+function projector(time: number, portrait: boolean) {
+  const yaw = -0.4 + Math.sin(time * 0.22) * 0.027;
+  const pitch = -0.48 + Math.sin(time * 0.17) * 0.022;
+  const roll = -0.22 + Math.sin(time * 0.14) * 0.012;
+  const cy = Math.cos(yaw),
+    sy = Math.sin(yaw);
+  const cp = Math.cos(pitch),
+    sp = Math.sin(pitch);
+  const cr = Math.cos(roll),
+    sr = Math.sin(roll);
+  const scale = portrait ? 1.28 : 1.58;
+  return ([x, y, z]: V3): Point => {
+    const rx = x * cy + z * sy;
+    const rz = -x * sy + z * cy;
+    const ry = y * cp - rz * sp;
+    const xx = rx * cr - ry * sr;
+    const yy = rx * sr + ry * cr;
     return {
-      word,
-      x: center[0],
-      y: center[1],
-      body: path(projected),
-      skin: path([...projected, ...lower.toReversed()], true),
-      back: path(lower),
-      ribs: projected
-        .filter((_, index) => index % 4 === 0)
-        .map((point, index) => path([point, lower[index * 4]]))
-        .join(""),
-      outlet,
-      tangent: { x: dx / length, y: dy / length },
+      x: portrait ? 210 - yy * scale : 408 + xx * scale,
+      y: portrait ? 322 + xx * scale : 217 + yy * scale,
+      depth: y * sp + rz * cp,
     };
-  });
-  const flows = Array.from({ length: 6 }, (_, i) => {
-    const input = inputs[Math.floor(i / 2)];
-    const destination = cells[hashRoutes[i].bucket];
-    // Share the projected endpoint and tangent with the token curve. An
-    // approximate screen-space offset leaves a visible gap as the camera moves.
-    const { outlet, tangent } = input;
-    const reach = portrait ? 28 : 48;
-    const c1 = {
-      x: outlet.x + tangent.x * reach,
-      y: outlet.y + tangent.y * reach,
-    };
-    const c2 = portrait
-      ? { x: destination.x, y: destination.y - 62 }
-      : { x: destination.x - 62, y: destination.y };
-    return `M${fmt(outlet.x)},${fmt(outlet.y)}C${fmt(c1.x)},${fmt(c1.y)} ${fmt(c2.x)},${fmt(c2.y)} ${fmt(destination.x)},${fmt(destination.y)}`;
-  });
-  const outputCenter: V3 = portrait ? [210, 552, 0] : [662, 250, 0];
-  const outputRadius = portrait ? 66 : 83;
-  const globePoint = (ring: number, i: number, band = 0) => {
-    const theta = (i / 64) * TAU;
-    const spin = time * 0.16;
-    const latitude = -0.8 + ring * 0.2;
-    const phi = ((ring - 9) / 8) * Math.PI + spin + band;
-    const radius =
-      outputRadius * Math.sqrt(Math.max(0, 1 - latitude * latitude));
-    const p: V3 =
-      ring < 9
-        ? [
-            radius * Math.cos(theta + spin),
-            latitude * outputRadius,
-            radius * Math.sin(theta + spin),
-          ]
-        : [
-            Math.sin(theta) * Math.cos(phi) * outputRadius,
-            Math.cos(theta) * outputRadius,
-            Math.sin(theta) * Math.sin(phi) * outputRadius,
-          ];
-    return project(p, time, portrait, outputCenter);
   };
-  const ringPoints = Array.from({ length: 17 }, (_, ring) =>
-    Array.from({ length: 65 }, (_, i) => globePoint(ring, i)),
-  );
-  const rings = ringPoints.map((points) => path(points));
-  // A single unit sphere, not a cluster of independently moving circles.
-  // Fine meridian ribbons have two boundaries on that same sphere, and each
-  // quarter receives continuous depth-dependent lighting without clipping.
-  const outputMaterials = Array.from({ length: 8 }, (_, index) => {
-    const left = Array.from({ length: 65 }, (_, i) =>
-      globePoint(index + 9, i, -0.022),
+}
+
+/** Sample the exact rounded SVG polyline by projected arc length. */
+function sample(points: Point[], progress: number): Point {
+  const lengths = points
+    .slice(1)
+    .map((point, index) =>
+      Math.hypot(point.x - points[index].x, point.y - points[index].y),
     );
-    const right = Array.from({ length: 65 }, (_, i) =>
-      globePoint(index + 9, i, 0.022),
-    );
-    return {
-      spine: rings[index + 9],
-      skin: path([...left, ...right.toReversed()], true),
-      ribs: left
-        .filter((_, i) => i % 4 === 0)
-        .map((point, i) => path([point, right[i * 4]]))
-        .join(""),
-    };
-  });
-  const outputSegments = ringPoints.flatMap((points) =>
-    Array.from({ length: 4 }, (_, quarter) => {
-      const segment = points.slice(quarter * 16, quarter * 16 + 17);
-      const depth =
-        segment.reduce((sum, point) => sum + point.depth, 0) / segment.length;
+  let remaining = lengths.reduce((sum, length) => sum + length, 0) * progress;
+  for (let index = 0; index < lengths.length; index++) {
+    const length = lengths[index];
+    if (remaining <= length || index === lengths.length - 1) {
+      const amount = length ? clamp(remaining / length) : 0;
+      const a = points[index],
+        b = points[index + 1];
       return {
-        path: path(segment),
-        light: Number((0.12 + (depth / outputRadius + 1) * 0.2).toFixed(4)),
+        x: a.x + (b.x - a.x) * amount,
+        y: a.y + (b.y - a.y) * amount,
+        depth: a.depth + (b.depth - a.depth) * amount,
       };
+    }
+    remaining -= length;
+  }
+  return points[0];
+}
+
+export function embeddingFrame(
+  time: number,
+  blend: Blend,
+  portrait = false,
+  processTime = time,
+): EmbeddingFrame {
+  const clock = Number.isFinite(time) ? Math.max(0, time) : 0;
+  const processClock = Number.isFinite(processTime)
+    ? Math.max(0, processTime)
+    : 0;
+  const progress = (processClock % EMBEDDING_CYCLE) / EMBEDDING_CYCLE;
+  const project = projector(clock, portrait);
+  const gpu = embeddingGpuFrame(clock, project);
+  const paths: EmbeddingPath[] = [];
+  const signals: EmbeddingSignal[] = [];
+  const labels: EmbeddingLabel[] = [];
+  const phase: EmbeddingFrame["phase"] = {
+    stage: progress < 0.275 ? "receive" : progress < 0.725 ? "process" : "emit",
+    progress,
+    cycle: Math.floor(processClock / EMBEDDING_CYCLE),
+  };
+  const route = (
+    id: string,
+    kind: EmbeddingPathKind,
+    local: V3[],
+    from: number,
+    to: number,
+    metadata: Pick<EmbeddingPath, "token" | "bucket" | "sign" | "mode"> = {},
+  ) => {
+    const points = local.map((point) => {
+      const projected = project(point);
+      // Match the rendered path coordinates, including their precision.
+      return {
+        ...projected,
+        x: Number(fmt(projected.x)),
+        y: Number(fmt(projected.y)),
+      };
+    });
+    const fraction = clamp((progress - from) / (to - from));
+    const travel = smooth(fraction);
+    const opacity =
+      smooth(clamp(fraction / 0.12)) * smooth(clamp((1 - fraction) / 0.18));
+    const weight = metadata.mode
+      ? blend[EMBEDDING_MODES.indexOf(metadata.mode)]
+      : 1;
+    paths.push({
+      id,
+      kind,
+      d: path(points),
+      activity: opacity * weight,
+      weight,
+      start: points[0],
+      end: points[points.length - 1],
+      ...metadata,
+    });
+    signals.push({
+      id: id + "-signal",
+      pathId: id,
+      kind,
+      point: sample(points, travel),
+      progress: travel,
+      opacity: opacity * weight,
+      weight,
+      mode: metadata.mode,
+      radius: kind === "compute" ? 2.4 : kind === "output" ? 2.1 : 2,
+    });
+  };
+  const label = (
+    id: string,
+    text: string,
+    location: V3,
+    kind: EmbeddingLabel["kind"],
+    anchor: EmbeddingLabel["anchor"] = "middle",
+    dx = 0,
+    dy = 0,
+  ) => {
+    const point = project(location);
+    labels.push({
+      id,
+      text,
+      x: point.x + dx,
+      y: point.y + dy,
+      kind,
+      anchor,
+      opacity: 1,
+    });
+  };
+
+  // Three real connector fingers feed two signed hash routes per token. The
+  // numbers and signs are exact only for the lexical teaching example.
+  const contactX = [-116, -38, 46];
+  const contacts = contactX.map((x): V3 => [x, 113.5, 0.7]);
+  const inputs = contacts.map(([x, , z]): V3 => [x, portrait ? 146 : 167, z]);
+  example.tokens.forEach((token, index) => {
+    route(
+      `input-${index}`,
+      "input",
+      [inputs[index], contacts[index]],
+      0.015 + index * 0.035,
+      0.18 + index * 0.04,
+      { token },
+    );
+    if (portrait) {
+      const point = project(inputs[index]);
+      labels.push({
+        id: `token-${index}`,
+        text: token,
+        x: 10,
+        y: point.y + 17,
+        anchor: "start",
+        kind: "token",
+        opacity: 1,
+      });
+    } else
+      label(`token-${index}`, token, inputs[index], "token", "middle", 0, 20);
+  });
+  example.routes.forEach(({ token, bucket, sign }, index) => {
+    const input = Math.floor(index / 2);
+    const branch = index % 2 ? 1.3 : -1.3;
+    const lane = [-107, -52, 52][input] + branch;
+    const cell = gpuCellPoint(bucket);
+    const start = contacts[input];
+    route(
+      `compute-${index}`,
+      "compute",
+      [
+        start,
+        [start[0], 99, 0.8],
+        [lane, 99, 0.8],
+        [lane, 66, 1.2],
+        [cell[0], 66, 12],
+        cell,
+      ],
+      0.275 + index * 0.038,
+      0.405 + index * 0.038,
+      { token, bucket, sign, mode: "lexical" },
+    );
+    route(
+      `reduce-${index}`,
+      "reduce",
+      [
+        cell,
+        [-62, cell[1], 16],
+        [-83, cell[1], 1.4],
+        [-83, -10, 1.4],
+        [-131, -10, 7.2],
+      ],
+      0.61 + index * 0.009,
+      0.72,
+      { token, bucket, sign, mode: "lexical" },
+    );
+  });
+  // Learned query inference retrieves existing word/subword vectors. These
+  // memory routes do not represent retraining PPMI/SVD for every query.
+  const learnedBanks = [
+    [1, 8],
+    [3, 9],
+    [5, 7],
+  ];
+  const pooledTiles = [2, 3, 6];
+  example.tokens.forEach((token, tokenIndex) => {
+    const pool = gpuTilePoint(pooledTiles[tokenIndex]);
+    learnedBanks[tokenIndex].forEach((bank, sourceIndex) => {
+      const index = tokenIndex * 2 + sourceIndex;
+      const memory = gpuMemoryPoint(bank);
+      const input = contacts[tokenIndex];
+      route(
+        `learned-read-${index}`,
+        "compute",
+        [input, [input[0], 99, 0.8], [memory[0], 99, 0.8], memory],
+        0.282 + index * 0.015,
+        0.382 + index * 0.015,
+        { token, mode: "learned" },
+      );
+      const lane = memory[0] < 0 ? -82 : 82;
+      route(
+        `learned-pool-${index}`,
+        "compute",
+        [memory, [lane, memory[1], 1.5], [lane, pool[1], 1.5], pool],
+        0.465 + index * 0.012,
+        0.565 + index * 0.012,
+        { token, mode: "learned" },
+      );
+    });
+    route(
+      `learned-reduce-${tokenIndex}`,
+      "reduce",
+      [
+        pool,
+        [-62, pool[1], 16],
+        [-83, pool[1], 1.4],
+        [-83, -10, 1.4],
+        [-131, -10, 7.2],
+      ],
+      0.64 + tokenIndex * 0.011,
+      0.72,
+      { token, mode: "learned" },
+    );
+  });
+
+  // The neural family uses the board differently: token interaction, staged
+  // encoder tiles supplied by memory, then one CLS-like pooled representation.
+  // Eight teaching tiles do not assert the model's actual layer/core count.
+  const encoderOrder = [0, 1, 3, 2, 4, 5, 7, 6];
+  const contextPoints = example.tokens.map((_, index): V3 => [
+    -24,
+    -42.5 + index * 5,
+    20.2,
+  ]);
+  example.tokens.forEach((token, index) => {
+    const start = contacts[index];
+    route(
+      `neural-entry-${index}`,
+      "compute",
+      [
+        start,
+        [start[0], 99, 0.8],
+        [0, 99, 0.8],
+        [0, 62, 12],
+        contextPoints[index],
+      ],
+      0.285 + index * 0.018,
+      0.365 + index * 0.018,
+      { token, mode: "neural" },
+    );
+    route(
+      `neural-context-${index}`,
+      "compute",
+      [
+        contextPoints[index],
+        [24, -42.5 + index * 5, 20.2],
+        contextPoints[(index + 1) % 3],
+      ],
+      0.407 + index * 0.007,
+      0.437 + index * 0.007,
+      { token, mode: "neural" },
+    );
+  });
+  encoderOrder.forEach((tile, index) => {
+    const center = gpuTilePoint(tile);
+    const memory = gpuMemoryPoint(index);
+    const from = index === 0 ? 0.437 : 0.458 + (index - 1) * 0.027;
+    const to = index === 0 ? 0.458 : from + 0.027;
+    route(
+      `neural-weights-${index}`,
+      "compute",
+      [memory, [memory[0], center[1], 2], center],
+      from,
+      to,
+      { mode: "neural" },
+    );
+    if (index < encoderOrder.length - 1) {
+      const next = gpuTilePoint(encoderOrder[index + 1]);
+      route(
+        `neural-layer-${index}`,
+        "compute",
+        [center, next],
+        0.458 + index * 0.027,
+        0.485 + index * 0.027,
+        { mode: "neural" },
+      );
+    }
+  });
+  const cls = gpuTilePoint(encoderOrder[7]);
+  route(
+    "neural-cls",
+    "reduce",
+    [
+      cls,
+      [-62, cls[1], 16],
+      [-83, cls[1], 1.4],
+      [-83, -10, 1.4],
+      [-131, -10, 7.2],
+    ],
+    0.66,
+    0.72,
+    { mode: "neural" },
+  );
+
+  // The board-mounted buffer receives the completed representation; a small
+  // parallel bus exits through its I/O bracket. No detached output object.
+  [-6, 0, 6].forEach((offset, index) => {
+    route(
+      `output-${index}`,
+      "output",
+      [
+        [-155, -10 + offset, 7.2],
+        [-173, -10 + offset, 8],
+        [portrait ? -219 : -228, -10 + offset, 8],
+      ],
+      0.745 + index * 0.04,
+      0.875 + index * 0.04,
+    );
+  });
+  label("buffer", "L2", [-143, -10, 7.5], "port", "middle", 0, 3);
+  if (portrait) {
+    labels.push({
+      id: "input-port",
+      text: "TOKENS",
+      x: 10,
+      y: project(inputs[0]).y - 18,
+      anchor: "start",
+      kind: "port",
+      opacity: 1,
+    });
+    labels.push({
+      id: "output-port",
+      text: "NORMALIZED VECTOR",
+      x: 210,
+      y: 20,
+      anchor: "middle",
+      kind: "vector",
+      opacity: 1,
+    });
+  } else {
+    label(
+      "input-port",
+      "TOKEN SIGNALS",
+      [-38, 132, 0.7],
+      "port",
+      "middle",
+      0,
+      2,
+    );
+    labels.push({
+      id: "output-port",
+      text: "VECTOR OUTPUT",
+      x: 27,
+      y: 174,
+      anchor: "start",
+      kind: "vector",
+      opacity: 1,
+    });
+  }
+
+  // The patterns below illustrate different kinds of work, never measured
+  // utilization or fabricated embedding values. They are driven by arrivals at
+  // physical components, not ambient oscillation unrelated to the data flow.
+  const fade = 1 - smooth(clamp((progress - 0.725) / 0.06));
+  const learnedTileActivity = Array<number>(8).fill(0);
+  pooledTiles.forEach((tile, tokenIndex) => {
+    const first = smooth(
+      clamp((progress - (0.565 + tokenIndex * 0.024)) / 0.014),
+    );
+    const second = smooth(
+      clamp((progress - (0.577 + tokenIndex * 0.024)) / 0.014),
+    );
+    learnedTileActivity[tile] = (first * 0.32 + second * 0.48) * fade;
+  });
+  const neuralTileActivity = Array<number>(8).fill(0);
+  encoderOrder.forEach((tile, index) => {
+    const arrival = index === 0 ? 0.458 : 0.485 + (index - 1) * 0.027;
+    const entered = smooth(clamp((progress - arrival) / 0.012));
+    const leading = 1 - smooth(clamp((progress - arrival - 0.04) / 0.055));
+    // A bright current front plus overlapping dense work on visited tiles.
+    neuralTileActivity[tile] = entered * (0.44 + leading * 0.5) * fade;
+  });
+  const context =
+    smooth(clamp((progress - 0.365) / 0.025)) *
+    (1 - smooth(clamp((progress - 0.437) / 0.025)));
+  neuralTileActivity[0] = Math.max(neuralTileActivity[0], context * 0.72);
+  neuralTileActivity[1] = Math.max(
+    neuralTileActivity[1],
+    context * 0.55 * smooth(clamp((progress - 0.422) / 0.012)),
+  );
+  const dominantMode = blend.indexOf(Math.max(...blend));
+  const sortedBlend = [...blend].sort((a, b) => b - a);
+  const operationOpacity = smooth(
+    clamp((sortedBlend[0] - sortedBlend[1]) / 0.15),
+  );
+  const cellOperations: EmbeddingFrame["cellOperations"] = [];
+  const operationActivity: number[] = [];
+  const operationPulse = (from: number, to: number) => {
+    const fraction = clamp((progress - from) / (to - from));
+    return smooth(clamp(fraction / 0.2)) * smooth(clamp((1 - fraction) / 0.2));
+  };
+  const cellActivity = gpu.cells.map((_, index) => {
+    const row = Math.floor(index / 16),
+      column = index % 16;
+    const tile = Math.floor(row / 4) * 2 + Math.floor(column / 8);
+    const routeIndex = example.routes.findIndex(
+      (item) => item.bucket === index,
+    );
+    const arrived =
+      routeIndex < 0
+        ? 0
+        : smooth(clamp((progress - (0.405 + routeIndex * 0.038)) / 0.025));
+    const lexical = 0.055 + (routeIndex < 0 ? 0 : 0.905 * arrived * fade);
+    // Two memory fetches accumulate into a moderately dense token group.
+    const learned =
+      0.055 +
+      learnedTileActivity[tile] *
+        (0.65 + 0.35 * (((column % 4) + (row % 2)) / 4));
+    // Ordered lanes ripple inside the overlapping encoder tiles; previously
+    // reached tiles retain work while the next tile receives the representation.
+    const stageIndex = encoderOrder.indexOf(tile);
+    const stageArrival =
+      stageIndex === 0 ? 0.458 : 0.485 + (stageIndex - 1) * 0.027;
+    const laneArrival = stageArrival + (row % 4) * 0.003 + (column % 8) * 0.001;
+    const lane = smooth(clamp((progress - laneArrival) / 0.012));
+    const neural = 0.055 + neuralTileActivity[tile] * (0.7 + 0.3 * lane);
+    // Arithmetic lives on the same die cells as the held results. Every pulse
+    // follows a delivered input; none is driven by a free-running random wave.
+    let operation: EmbeddingFrame["cellOperations"][number] = "none";
+    let activity = 0;
+    if (dominantMode === 0 && routeIndex >= 0) {
+      operation = example.routes[routeIndex].sign > 0 ? "add" : "subtract";
+      const arrival = 0.405 + routeIndex * 0.038;
+      activity = operationPulse(arrival, arrival + 0.045);
+    } else if (dominantMode === 1 && pooledTiles.includes(tile)) {
+      const group = pooledTiles.indexOf(tile);
+      const firstArrival = 0.565 + group * 0.024;
+      const secondArrival = 0.577 + group * 0.024;
+      const multiplyStart =
+        firstArrival + (column % 8) * 0.0015 + (row % 4) * 0.001;
+      const addStart = Math.max(secondArrival, multiplyStart + 0.035);
+      operation = progress < addStart ? "multiply" : "add";
+      activity =
+        progress < addStart
+          ? operationPulse(multiplyStart, addStart)
+          : operationPulse(addStart, addStart + 0.035);
+    } else if (dominantMode === 2) {
+      // Column-wise products are followed by row-wise accumulation. Adjacent
+      // encoder tiles overlap as a pipeline; 8 tiles remain an illustration,
+      // not a claim about model layers or hardware utilization.
+      const multiplyStart =
+        stageArrival + (column % 8) * 0.0018 + (row % 4) * 0.0006;
+      const multiplyEnd = multiplyStart + 0.025;
+      const addStart =
+        stageArrival + 0.025 + (row % 4) * 0.0025 + (column % 8) * 0.0018;
+      operation = progress < multiplyEnd ? "multiply" : "add";
+      activity =
+        progress < multiplyEnd
+          ? operationPulse(multiplyStart, multiplyEnd)
+          : operationPulse(addStart, addStart + 0.035);
+    }
+    cellOperations.push(operation);
+    operationActivity.push(activity * blend[dominantMode]);
+    return blend[0] * lexical + blend[1] * learned + blend[2] * neural;
+  });
+  const signalById = new Map(
+    signals.map((signal) => [signal.pathId, signal.opacity]),
+  );
+  const active = (...ids: string[]) =>
+    Math.max(0, ...ids.map((id) => signalById.get(id) ?? 0));
+  const partActivity: Record<string, number> = Object.fromEntries(
+    gpu.hardware.map(({ id }) => [id, 0]),
+  );
+  [2, 15, 29].forEach((contact, index) => {
+    partActivity[`contact-${contact}`] = active(`input-${index}`);
+  });
+  learnedBanks.forEach((banks, tokenIndex) =>
+    banks.forEach((bank, sourceIndex) => {
+      const index = tokenIndex * 2 + sourceIndex;
+      const held =
+        smooth(clamp((progress - (0.382 + index * 0.015)) / 0.012)) *
+        (1 - smooth(clamp((progress - (0.565 + index * 0.012)) / 0.025)));
+      partActivity[`memory-${bank}`] = Math.max(
+        partActivity[`memory-${bank}`],
+        active(`learned-pool-${index}`),
+        held * blend[1] * 0.8,
+      );
     }),
   );
-  const vectors = Array.from({ length: 18 }, (_, i) => {
-    const theta = i * 2.39996 + time * 0.13;
-    const z = 1 - (2 * (i + 0.5)) / 18;
-    const r = Math.sqrt(1 - z * z);
-    const p = project(
-      [
-        Math.cos(theta) * r * outputRadius,
-        Math.sin(theta) * r * outputRadius,
-        z * outputRadius,
-      ],
-      time,
-      portrait,
-      outputCenter,
+  encoderOrder.forEach((_, index) => {
+    partActivity[`memory-${index}`] = Math.max(
+      partActivity[`memory-${index}`],
+      active(`neural-weights-${index}`),
     );
-    return {
-      point: p,
-      ray: `M${outputCenter[0]},${outputCenter[1]}L${fmt(p.x)},${fmt(p.y)}`,
-    };
   });
-  // Join the meridian's north pole on mobile, and the rotating equator on
-  // desktop. These are actual surface points, not approximate silhouette bounds.
-  const outputPort = project(
-    portrait
-      ? [0, -outputRadius, 0]
-      : [
-          -Math.cos(time * 0.16) * outputRadius,
-          0,
-          -Math.sin(time * 0.16) * outputRadius,
-        ],
-    time,
-    portrait,
-    outputCenter,
+  const computeActivity = Math.max(
+    0,
+    ...signals
+      .filter(({ kind }) => kind === "compute")
+      .map(({ opacity }) => opacity),
   );
-  const outgoing = Array.from({ length: 6 }, (_, i) => {
-    const start = cells[hashRoutes[i].bucket];
-    return portrait
-      ? `M${fmt(start.x)},${fmt(start.y)}C${fmt(start.x)},450 ${fmt(outputPort.x)},${fmt(outputPort.y - 34)} ${fmt(outputPort.x)},${fmt(outputPort.y)}`
-      : `M${fmt(start.x)},${fmt(start.y)}C${fmt(start.x + 55)},${fmt(start.y)} ${fmt(outputPort.x - 44)},${fmt(outputPort.y)} ${fmt(outputPort.x)},${fmt(outputPort.y)}`;
-  });
+  partActivity["gpu-package"] = computeActivity * 0.6;
+  partActivity["die-substrate"] = Math.max(...cellActivity) * 0.55;
+  partActivity["pcb"] = computeActivity * 0.15;
+  const outputActivity = active("output-0", "output-1", "output-2");
+  partActivity["vector-buffer"] = Math.max(
+    outputActivity,
+    smooth(clamp((progress - 0.72) / 0.02)) *
+      (1 - smooth(clamp((progress - 0.955) / 0.03))),
+  );
+  partActivity["mounting-bracket"] = outputActivity * 0.5;
+  partActivity["connector-port-1"] = outputActivity;
   return {
-    surfaces,
-    materials,
-    lines,
-    cells,
-    connections,
-    inputs,
-    flows,
-    rings,
-    outputMaterials,
-    outputSegments,
-    vectors,
-    outgoing,
+    ...gpu,
+    cellActivity,
+    cellOperations,
+    operationActivity,
+    operationOpacity,
+    partActivity,
+    paths,
+    signals,
+    labels,
+    phase,
   };
 }
 

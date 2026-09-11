@@ -93,13 +93,13 @@ test("Vorpal architecture, tokens and chart labels retain their wireframe letter
   );
 });
 
-test("ranking uses normal-width shaded identifiers while keeping its formula and controls distinct", async ({
+test("ranking uses proportional shaded lettering and physical score tracks without an equation overlay", async ({
   page,
 }, testInfo) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/blog/introducing-vorpal");
   const figure = page.locator("[data-vorpal-ranking]");
-  const svg = figure.locator("[data-ranking-art]:visible");
+  const svg = figure.locator("[data-ranking-scene]:visible");
   await svg.scrollIntoViewIfNeeded();
   await page.evaluate(() => document.fonts.ready);
   expect(
@@ -110,29 +110,34 @@ test("ranking uses normal-width shaded identifiers while keeping its formula and
     ),
   ).toBe(true);
   for (const label of await svg
-    .locator('text:not([data-ranking-label="fusion"])')
+    .locator('[data-ranking-label]:not([data-ranking-label="fusion"])')
     .all()) {
     await expect(label).toHaveCSS("font-family", /"?Barlow"?,/);
     await expect(label).toHaveCSS("font-weight", "400");
   }
-  const formula = svg.locator('[data-ranking-label="fusion"]');
-  await expect(formula).toHaveText("Σ 1 / (60 + r)");
-  await expect(formula).toHaveCSS("font-family", /Geist Mono Variable/);
-  await expect(formula).toHaveCSS("font-weight", "300");
+  await expect(svg.locator("[data-ranking-operation]")).toHaveText("");
+  await expect(svg.locator("[data-ranking-score-track]")).toHaveCount(3);
+  await expect(svg.locator("[data-ranking-score-segment]")).toHaveCount(7);
   for (const label of await svg
     .locator(
-      '[data-ranking-label^="candidate-"], [data-ranking-label^="output-"]:not([data-ranking-label^="output-rank-"])',
+      '[data-ranking-label^="candidate-"], [data-ranking-label^="output-"]:not([data-ranking-label^="output-rank-"]), [data-hardware-inscription="processor"] > text:first-child',
     )
     .all()) {
-    const stops = await label.evaluate((element) => {
-      const fill = element.style.fill;
-      const id = fill.slice(fill.lastIndexOf("#") + 1).replace(/["')]/g, "");
-      const gradient = document.getElementById(id);
-      return Array.from(gradient?.querySelectorAll("stop") ?? [], (stop) =>
-        stop.getAttribute("stop-color"),
+    const shading = await label.evaluate((element) => {
+      const fill = getComputedStyle(element).fill;
+      const id = fill.match(/#([^\)\"]+)/)?.[1];
+      const gradient = id ? document.getElementById(id) : null;
+      return Array.from(gradient?.querySelectorAll("stop") ?? []).map(
+        (stop) => getComputedStyle(stop).stopColor,
       );
     });
-    expect(stops).toEqual(["#c2d4d6", "#aebdc9", "#a89caf"]);
+    expect(shading).toEqual([
+      "rgb(194, 212, 214)",
+      "rgb(174, 189, 201)",
+      "rgb(168, 156, 175)",
+    ]);
+    // A rigid board transform is inherited, never a stretched text transform.
+    await expect(label).toHaveCSS("transform", "none");
   }
   await expect(figure.getByRole("heading").first()).toHaveCSS(
     "font-family",

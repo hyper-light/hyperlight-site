@@ -218,7 +218,9 @@ export function ProofScene({
           style={{ stroke: color(path.tone) }}
           vectorEffect="non-scaling-stroke"
           pathLength={path.kind === "light" ? 200 : undefined}
-          strokeDasharray={path.kind === "light" ? "12 188" : undefined}
+          strokeDasharray={
+            path.dashArray ?? (path.kind === "light" ? "12 188" : undefined)
+          }
         />
       ))}
       {initial.labels.map((label) => (

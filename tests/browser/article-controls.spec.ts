@@ -86,57 +86,32 @@ test("article selectors share equal-width tabs, typography, and motion-aware chr
     .toBe("none");
 });
 
-test("diagram headings share the unit-vector treatment while content labels use proportional text", async ({
+test("ranking trace labels retain their own proportional treatment beside the embedding diagrams", async ({
   page,
 }) => {
   await page.goto("/blog/introducing-vorpal");
   for (const width of [320, 600, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const embedding = page.locator("[data-embedding-scene]:visible");
-    const reference = await embedding
-      .locator("text")
-      .filter({ hasText: /^UNIT VECTOR$/ })
-      .evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          font: style.fontFamily,
-          spacing: style.letterSpacing,
-          size: style.fontSize,
-        };
-      });
-    const proseFont = await page
-      .getByRole("tab", { name: "Lexical", exact: true })
-      .evaluate((element) => getComputedStyle(element).fontFamily);
     for (const word of await embedding.locator("[data-embedding-word]").all()) {
-      expect(
-        await word.evaluate((element) => getComputedStyle(element).fontFamily),
-      ).toBe(proseFont);
+      // The embedding engraving remains unchanged; only ranking uses Barlow.
+      await expect(word).toHaveCSS("font-family", /Geist Mono Variable/);
     }
-    const ranking = page.locator("[data-ranking-art]:visible");
+    const ranking = page.locator("[data-ranking-scene]:visible");
     for (const title of await ranking
       .locator(
         '[data-ranking-label^="channel-"], [data-ranking-label="result"]',
       )
       .all()) {
-      expect(
-        await title.evaluate((element) => {
-          const style = getComputedStyle(element);
-          return {
-            font: style.fontFamily,
-            spacing: style.letterSpacing,
-            size: style.fontSize,
-          };
-        }),
-      ).toEqual(reference);
+      await expect(title).toHaveCSS("font-family", /Barlow/);
     }
     for (const label of await ranking
       .locator(
-        '[data-ranking-label^="candidate-"], [data-ranking-label^="rank-"], [data-ranking-label="fusion"]',
+        '[data-ranking-label^="candidate-"], [data-ranking-label^="output-"]',
       )
       .all()) {
-      expect(
-        await label.evaluate((element) => getComputedStyle(element).fontFamily),
-      ).toBe(proseFont);
+      await expect(label).toHaveCSS("font-family", /Barlow/);
     }
+    await expect(ranking.locator("[data-ranking-operation]")).toHaveText("");
   }
 });

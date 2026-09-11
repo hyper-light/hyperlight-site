@@ -44,7 +44,16 @@ export function LedgerPlacement() {
       title="Global Ledger Placement"
       steps={steps}
       frame={ledgerPlacementFrame}
-      caption="Illustrative regions, not measured deployment locations. Home-region policy selects ordinary authority placement; residency bounds every durable copy. A three-region diagram isn't evidence of WAN-scale performance."
+      caption={
+        <>
+          Map detail from{" "}
+          <a href="https://www.naturalearthdata.com/">Natural Earth</a>;
+          workload sites and traffic are illustrative. Home-region policy
+          selects ordinary authority placement; residency bounds every durable
+          copy. A three-region diagram isn&apos;t evidence of WAN-scale
+          performance.
+        </>
+      }
     />
   );
 }

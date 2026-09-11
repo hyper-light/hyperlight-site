@@ -4,136 +4,24 @@ import type {
   ProofPath,
   ProofTone,
 } from "./proof-geometry";
+import {
+  activityFrame,
+  sphericalRoutePoint,
+} from "./ledger-placement-activity";
+import {
+  WORLD_COASTLINES,
+  WORLD_BORDERS,
+  type GeographicChunk,
+} from "./world-geography";
 
 type Point = [number, number, number];
 const TAU = Math.PI * 2;
+export const LEDGER_GLOBE_REVOLUTION_SECONDS = 90;
 const regions = [
   { name: "Region A", lat: 39, lon: -70 },
   { name: "Region B", lat: 50, lon: 15 },
   { name: "Region C", lat: 18, lon: 101 },
 ];
-// Hand-drawn, deliberately approximate coastlines: placement is illustrative.
-const coasts = [
-  [
-    [-166, 65],
-    [-141, 70],
-    [-128, 61],
-    [-123, 49],
-    [-117, 32],
-    [-106, 24],
-    [-91, 19],
-    [-84, 22],
-    [-81, 26],
-    [-81, 31],
-    [-70, 43],
-    [-60, 49],
-    [-66, 58],
-    [-86, 67],
-    [-110, 72],
-    [-140, 70],
-    [-166, 65],
-  ],
-  [
-    [-81, 11],
-    [-72, 12],
-    [-60, 6],
-    [-49, -1],
-    [-36, -6],
-    [-39, -20],
-    [-52, -33],
-    [-67, -55],
-    [-73, -43],
-    [-77, -14],
-    [-81, 11],
-  ],
-  [
-    [-53, 60],
-    [-43, 60],
-    [-21, 71],
-    [-31, 82],
-    [-50, 82],
-    [-62, 73],
-    [-53, 60],
-  ],
-  [
-    [-10, 36],
-    [-9, 43],
-    [-2, 49],
-    [8, 54],
-    [6, 59],
-    [20, 70],
-    [31, 70],
-    [26, 58],
-    [39, 55],
-    [51, 69],
-    [90, 75],
-    [130, 69],
-    [166, 61],
-    [154, 50],
-    [140, 46],
-    [129, 36],
-    [123, 30],
-    [109, 20],
-    [105, 1],
-    [99, 5],
-    [93, 23],
-    [80, 8],
-    [70, 23],
-    [52, 26],
-    [44, 12],
-    [37, 20],
-    [35, 31],
-    [28, 41],
-    [23, 36],
-    [15, 39],
-    [10, 44],
-    [3, 41],
-    [-10, 36],
-  ],
-  [
-    [-17, 29],
-    [-5, 36],
-    [10, 37],
-    [24, 32],
-    [34, 31],
-    [43, 12],
-    [51, 11],
-    [42, -2],
-    [40, -16],
-    [32, -30],
-    [19, -35],
-    [11, -18],
-    [8, 4],
-    [-3, 5],
-    [-16, 14],
-    [-17, 29],
-  ],
-  [
-    [113, -22],
-    [114, -34],
-    [133, -33],
-    [146, -39],
-    [154, -28],
-    [144, -14],
-    [132, -12],
-    [126, -17],
-    [113, -22],
-  ],
-  [
-    [130, 31],
-    [138, 35],
-    [142, 43],
-    [145, 44],
-  ],
-  [
-    [46, -13],
-    [50, -16],
-    [47, -25],
-    [44, -22],
-    [46, -13],
-  ],
-];
-
 function globePoint(lat: number, lon: number, radius = 1): Point {
   const a = (lat * Math.PI) / 180,
     b = ((lon - 18) * Math.PI) / 180;
@@ -144,27 +32,64 @@ function globePoint(lat: number, lon: number, radius = 1): Point {
   ];
 }
 
+function prepareGeography(chunks: readonly GeographicChunk[]) {
+  return chunks.map((chunk) => {
+    const lines = chunk.lines.map((line) =>
+      line.map(([lon, lat]) => globePoint(lat, lon, 1.006)),
+    );
+    const all = lines.flat();
+    const center = all.reduce<Point>(
+      (sum, point) => [
+        sum[0] + point[0] / all.length,
+        sum[1] + point[1] / all.length,
+        sum[2] + point[2] / all.length,
+      ],
+      [0, 0, 0],
+    );
+    return { id: chunk.id, disputed: chunk.disputed, lines, center };
+  });
+}
+const coastGeometry = prepareGeography(WORLD_COASTLINES);
+const borderGeometry = prepareGeography(WORLD_BORDERS);
+
 /** Geographic routing is independent of the logical identity of the session. */
 export function ledgerPlacementFrame(
   time: number,
   selection: number,
   portrait: boolean,
 ): ProofFrame {
+  const clock = Number.isFinite(time) ? Math.max(0, time) : 0;
   const paths: ProofPath[] = [],
     labels: ProofLabel[] = [];
   const mode = Math.max(0, Math.min(2, Math.round(selection)));
   const cx = portrait ? 210 : 400,
-    cy = portrait ? 305 : 242,
+    cy = portrait ? 305 : 250,
     radius = portrait ? 153 : 170;
-  const roll = -0.12 + Math.sin(time * 0.19) * 0.025;
+  // One slow geographic rotation on the shared scene clock. Selection changes
+  // affect placement policy, never the globe's pose or motion preferences.
+  const yaw =
+    ((clock % LEDGER_GLOBE_REVOLUTION_SECONDS) /
+      LEDGER_GLOBE_REVOLUTION_SECONDS) *
+    TAU;
+  const roll = -0.12 + Math.sin(clock * 0.19) * 0.025;
+  const yawCos = Math.cos(yaw),
+    yawSin = Math.sin(yaw),
+    rollCos = Math.cos(roll),
+    rollSin = Math.sin(roll);
+  const depthOf = ([x, , z]: Point) => z * yawCos - x * yawSin;
+  const frontness = (point: Point) => {
+    // Fade through the limb rather than popping a coastline on/off halfway
+    // around the sphere. The rear remains visible through the wireframe shell.
+    const amount = Math.max(0, Math.min(1, (depthOf(point) + 0.12) / 0.24));
+    return amount * amount * (3 - 2 * amount);
+  };
   const project = ([x, y, z]: Point): [number, number] => {
-    const yaw = Math.sin(time * 0.17) * 0.025;
-    const turned = x * Math.cos(yaw) + z * Math.sin(yaw);
-    const depth = z * Math.cos(yaw) - x * Math.sin(yaw);
+    const turned = x * yawCos + z * yawSin;
+    const depth = depthOf([x, y, z]);
     const scale = (radius * 5) / (5 - depth * 0.2);
     return [
-      cx + (turned * Math.cos(roll) - y * Math.sin(roll)) * scale,
-      cy + (turned * Math.sin(roll) + y * Math.cos(roll)) * scale,
+      cx + (turned * rollCos - y * rollSin) * scale,
+      cy + (turned * rollSin + y * rollCos) * scale,
     ];
   };
   const path = (
@@ -217,9 +142,16 @@ export function ledgerPlacementFrame(
   for (let lat = -75; lat <= 75; lat += 15) {
     for (let half = 0; half < 2; half++) {
       const points = Array.from({ length: 49 }, (_, i) =>
-        project(globePoint(lat, 18 - 90 + half * 180 + (i / 48) * 180)),
+        // Split latitude rings at the current silhouette, not a fixed world
+        // longitude; otherwise the bright front half would rotate to the rear.
+        project(
+          globePoint(
+            lat,
+            18 - 90 + half * 180 + (i / 48) * 180 - (yaw * 180) / Math.PI,
+          ),
+        ),
       );
-      path(`latitude-${lat}-${half}`, points, "fine", half ? 0.11 : 0.36);
+      path(`latitude-${lat}-${half}`, points, "fine", half ? 0.045 : 0.22);
     }
   }
   for (let lon = -162; lon < 198; lon += 15) {
@@ -229,7 +161,7 @@ export function ledgerPlacementFrame(
         project(globePoint(-90 + (i / 48) * 180, lon)),
       ),
       "fine",
-      Math.cos(((lon - 18) * Math.PI) / 180) > 0 ? 0.32 : 0.1,
+      0.045 + 0.175 * frontness(globePoint(0, lon)),
     );
   }
   circle("globe-rim", cx, cy, radius, "edge", 0.58);
@@ -261,25 +193,36 @@ export function ledgerPlacementFrame(
       0.23,
     );
   }
-  coasts.forEach((coast, index) => {
-    coast.slice(1).forEach((b, segment) => {
-      const a = coast[segment];
-      const points = Array.from({ length: 5 }, (_, i) =>
-        project(
-          globePoint(
-            a[1] + ((b[1] - a[1]) * i) / 4,
-            a[0] + ((b[0] - a[0]) * i) / 4,
-            1.012,
-          ),
-        ),
-      );
-      const front = globePoint((a[1] + b[1]) / 2, (a[0] + b[0]) / 2)[2] > 0;
-      path(`coast-${index}-${segment}`, points, "edge", front ? 0.58 : 0.1);
-    });
-  });
+  for (const [chunks, coastline] of [
+    [borderGeometry, false],
+    [coastGeometry, true],
+  ] as const) {
+    for (const chunk of chunks) {
+      const visibility = frontness(chunk.center);
+      paths.push({
+        id: chunk.id,
+        d: chunk.lines
+          .map((line) =>
+            line
+              .map((point, index) => {
+                const [x, y] = project(point);
+                return `${index ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
+              })
+              .join(" "),
+          )
+          .join(" "),
+        kind: coastline ? "edge" : "fine",
+        opacity: coastline
+          ? 0.055 + visibility * 0.545
+          : 0.025 + visibility * 0.255,
+        dashArray: chunk.disputed ? "2 3" : undefined,
+      });
+    }
+  }
   const positions = regions.map((region) =>
     project(globePoint(region.lat, region.lon, 1.04)),
   );
+  paths.push(...activityFrame(clock, mode, project, frontness));
   const captions = portrait
     ? [
         [94, 83],
@@ -294,6 +237,8 @@ export function ledgerPlacementFrame(
   regions.forEach((region, index) => {
     const [x, y] = positions[index],
       [lx, ly] = captions[index];
+    const visibility =
+      0.4 + 0.6 * frontness(globePoint(region.lat, region.lon, 1.04));
     const blocked = mode === 2 && index === 2;
     const tone: ProofTone = blocked
       ? "fail"
@@ -307,11 +252,11 @@ export function ledgerPlacementFrame(
         y,
         3 + ring * 2.4,
         ring === 0 ? "glass" : "fine",
-        blocked ? 0.3 : 0.68 - ring * 0.1,
+        (blocked ? 0.3 : 0.68 - ring * 0.1) * visibility,
         tone,
       );
     for (let tick = 0; tick < 12; tick++) {
-      const a = (tick / 12) * TAU + time * 0.1;
+      const a = (tick / 12) * TAU + clock * 0.1;
       path(
         `hub-tick-${index}-${tick}`,
         [
@@ -319,7 +264,7 @@ export function ledgerPlacementFrame(
           [x + Math.cos(a) * 19, y + Math.sin(a) * 19],
         ],
         "fine",
-        0.46,
+        0.46 * visibility,
         tone,
       );
     }
@@ -339,7 +284,7 @@ export function ledgerPlacementFrame(
             [x, y],
           ],
       "fine",
-      0.3,
+      0.3 * visibility,
       tone,
     );
     label(`region-${index}`, region.name, lx, ly);
@@ -377,7 +322,7 @@ export function ledgerPlacementFrame(
         [x + 9, y + 9],
       ],
       "edge",
-      blocked ? 0.9 : 0,
+      blocked ? 0.9 * visibility : 0,
       "fail",
     );
     path(
@@ -387,7 +332,7 @@ export function ledgerPlacementFrame(
         [x + 9, y - 9],
       ],
       "edge",
-      blocked ? 0.9 : 0,
+      blocked ? 0.9 * visibility : 0,
       "fail",
     );
   });
@@ -398,15 +343,8 @@ export function ledgerPlacementFrame(
         regions[destination].lon,
         1.04,
       );
-    const routePoint = (t: number) => {
-      const lift = Math.sin(t * Math.PI) * 0.3;
-      const point: Point = [
-        start[0] * (1 - t) + end[0] * t,
-        start[1] * (1 - t) + end[1] * t - lift,
-        start[2] * (1 - t) + end[2] * t + lift,
-      ];
-      return project(point);
-    };
+    const routeWorld = (t: number) => sphericalRoutePoint(start, end, t, 0.04);
+    const routePoint = (t: number) => project(routeWorld(t));
     const blocked = mode === 2 && destination === 2;
     path(
       `replication-route-${destination}`,
@@ -415,15 +353,76 @@ export function ledgerPlacementFrame(
       mode ? 0.55 : 0.08,
       blocked ? "fail" : "pass",
     );
-    const t = (time * 0.16 + destination * 0.37) % 1;
-    const p = routePoint(blocked ? Math.min(t, 0.53) : t);
+    // A short batch leaves the ordering region; its acknowledgement returns
+    // only after the last packet reaches the replica. A residency rejection
+    // stops at the visible gate and never produces an arrival or an ack.
+    const phase = (clock / 7 + destination * 0.21) % 1;
+    const clamp = (value: number) => Math.max(0, Math.min(1, value));
+    const ease = (value: number) => value * value * (3 - 2 * value);
+    const envelope = (value: number) =>
+      ease(clamp(value / 0.12)) * ease(clamp((1 - value) / 0.18));
+    for (let packet = 0; packet < 3; packet++) {
+      const fraction = (phase - packet * 0.08) / 0.38;
+      const progress = clamp(fraction) * (blocked ? 0.53 : 1);
+      const p = routePoint(progress);
+      const opacity = mode
+        ? envelope(fraction) * (0.3 + 0.65 * frontness(routeWorld(progress)))
+        : 0;
+      circle(
+        packet === 0
+          ? `packet-${destination}`
+          : `replication-packet-${destination}-${packet}`,
+        p[0],
+        p[1],
+        packet === 0 ? 2.8 : 2.1,
+        "glass",
+        opacity,
+        blocked ? "fail" : "pass",
+      );
+      path(
+        `replication-trail-${destination}-${packet}`,
+        Array.from({ length: 6 }, (_, index) =>
+          routePoint(Math.max(0, progress - (1 - index / 5) * 0.075)),
+        ),
+        "edge",
+        opacity * 0.9,
+        blocked ? "fail" : "pass",
+      );
+    }
+    const ackProgress = clamp((phase - 0.62) / 0.34);
+    const ack = routePoint(1 - ackProgress);
+    const ackOpacity =
+      mode && !blocked
+        ? envelope((phase - 0.62) / 0.34) *
+          (0.3 + 0.6 * frontness(routeWorld(1 - ackProgress)))
+        : 0;
     circle(
-      `packet-${destination}`,
-      p[0],
-      p[1],
-      3.2,
+      `replication-ack-${destination}`,
+      ack[0],
+      ack[1],
+      2.2,
       "glass",
-      mode ? 0.95 : 0,
+      ackOpacity,
+      "pending",
+    );
+    path(
+      `replication-ack-trail-${destination}`,
+      Array.from({ length: 6 }, (_, index) =>
+        routePoint(Math.min(1, 1 - ackProgress + (1 - index / 5) * 0.075)),
+      ),
+      "edge",
+      ackOpacity,
+      "pending",
+    );
+    const arrival = (phase - 0.54) / 0.12;
+    const endPoint = routePoint(blocked ? 0.53 : 1);
+    circle(
+      `replication-arrival-${destination}`,
+      endPoint[0],
+      endPoint[1],
+      3 + 12 * ease(clamp(arrival)),
+      "edge",
+      mode ? envelope(arrival) * 0.65 : 0,
       blocked ? "fail" : "pass",
     );
     const [bx, by] = routePoint(0.55);

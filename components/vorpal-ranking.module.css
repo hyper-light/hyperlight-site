@@ -5,7 +5,6 @@
   font-display: swap;
   src: url("/fonts/barlow/Barlow-Regular.woff2") format("woff2");
 }
-
 .figure {
   container-type: inline-size;
   position: relative;
@@ -14,13 +13,22 @@
   border: 1px solid #2a3039;
   border-radius: 9px;
   background:
-    radial-gradient(ellipse at 62% 26%, #a4bacc05, transparent 56%), #0a0c0f;
+    radial-gradient(ellipse at 58% 32%, #a4bacc07, transparent 65%), #0a0c0f;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .figure::before {
   position: absolute;
-  top: 0;
-  right: 16%;
-  left: 16%;
+  inset: 0 16% auto;
   height: 1px;
   background: linear-gradient(
     90deg,
@@ -30,8 +38,6 @@
     #c4a8bd45,
     transparent
   );
-  background-size: 250% 100%;
-  background-position: var(--ranking-prism-shift, 50%) 0;
   content: "";
 }
 .header {
@@ -42,10 +48,12 @@
   padding: 23px 24px 0;
 }
 .eyebrow {
+  display: block;
   color: #a3aab8;
   font-family: var(--font-mono), monospace;
   font-size: 9px;
   letter-spacing: 0.1em;
+  line-height: 1.5;
 }
 .figure .title {
   margin: 8px 0 0;
@@ -60,6 +68,10 @@
   color: #aab3c1;
   font-size: 12px;
   line-height: 1.6;
+}
+.motionControls {
+  display: flex;
+  gap: 6px;
 }
 .motion {
   display: grid;
@@ -77,203 +89,178 @@
   color: #eef0f5;
   border-color: #637083;
 }
-.motion:focus-visible {
-  outline: 2px solid #b7c4df;
-  outline-offset: 4px;
-}
 .motion:disabled {
   cursor: default;
   opacity: 0.6;
 }
+.motion:focus-visible,
+.stages button:focus-visible,
+.details summary:focus-visible {
+  outline: 2px solid #b7c4df;
+  outline-offset: -4px;
+}
+/* Rigid, projected hardware. Labels stay on their board's front face. */
 .art {
+  position: relative;
+  padding: 22px 8px 12px;
+}
+.hardware {
   display: block;
   width: 100%;
   height: auto;
-  margin: 7px 0 2px;
   overflow: visible;
-}
-.portrait {
-  display: none;
-}
-.glass {
-  stroke: #8394ab;
-  stroke-width: 0.7;
-  stroke-opacity: 0.28;
-}
-.wire {
-  stroke: #8394ab;
-  stroke-width: 0.6;
-  opacity: 0.17;
-}
-.bevel {
-  stroke: #c3d1dd;
-  stroke-width: 0.45;
-  stroke-opacity: 0.2;
-}
-.rib {
-  stroke: #afc3d3;
-  stroke-width: 0.5;
-  opacity: 0.24;
-}
-.sheen {
-  stroke: #dae4e9;
-  stroke-width: 0.7;
-  stroke-linecap: round;
-  opacity: 0.4;
-}
-/* The open fusion chamber has a quiet rear shell and readable front edges.
-   Its small camera excursion never changes this stable painter/depth order. */
-.art [data-ranking-shape^="spindle-"][data-kind="rim"] {
-  opacity: 0.12;
-}
-.art [data-ranking-shape="spindle-0"][data-kind="rim"],
-.art [data-ranking-shape="spindle-4"][data-kind="rim"] {
-  opacity: 0.22;
-}
-.art [data-ranking-shape^="spindle-"][data-kind="wire"] {
-  opacity: 0.06;
-}
-.art [data-ranking-shape^="spindle-"][data-kind="bevel"] {
-  opacity: 0.45;
-}
-.art [data-ranking-shape^="spindle-thread-"][data-kind="wire"] {
-  opacity: 0.04;
-}
-.art [data-ranking-shape^="fusion-vane-"][data-kind="rim"] {
-  opacity: 0.4;
-}
-.art [data-ranking-shape^="fusion-vane-"][data-kind="wire"] {
-  opacity: 0.065;
-}
-.art [data-ranking-shape^="fusion-vane-"][data-kind="rib"] {
-  opacity: 0.09;
-}
-.art [data-ranking-shape^="fusion-vane-"][data-kind="glass"] {
-  stroke-opacity: 0.16;
-}
-.art
-  :is(
-    [data-ranking-shape^="fusion-vane-0"],
-    [data-ranking-shape^="fusion-vane-1"],
-    [data-ranking-shape^="fusion-vane-2"],
-    [data-ranking-shape^="fusion-vane-3"]
-  ) {
-  &[data-kind="rim"],
-  &[data-kind="sheen"] {
-    opacity: 0.075;
-  }
-  &[data-kind="glass"] {
-    opacity: 0.35;
-  }
-  &[data-kind="bevel"] {
-    opacity: 0.25;
-  }
-  &[data-kind="rib"],
-  &[data-kind="wire"] {
-    opacity: 0.035;
-  }
-}
-.slot {
-  stroke: none;
-}
-.contribution {
-  stroke-width: 0.8;
-  opacity: 0.36;
-}
-.result {
-  stroke: none;
-}
-.rim {
-  stroke-width: 0.8;
-  opacity: 0.35;
-}
-.light {
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  opacity: 0.9;
-}
-.channelLabel,
-.rankLabel,
-.candidateLabel,
-.outputLabel {
   font-family: "Barlow", var(--font-sans), sans-serif;
   font-weight: 400;
   font-synthesis: none;
   font-variant-numeric: lining-nums tabular-nums;
 }
-.channelLabel {
-  fill: #9bafb7;
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+.portrait {
+  display: none;
 }
-.rankLabel {
-  fill: #8fa3af;
+.hwLegend {
+  fill: #a7b9c8;
+  font-size: 14px;
+  letter-spacing: 0.11em;
+}
+.hwMicro {
+  fill: #8296aa;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.hwRank {
+  fill: #a6b8c9;
+  font-size: 14px;
+}
+.hwSymbol {
+  font-size: 16px;
+}
+.hwId {
+  fill: #91a5bc;
+  font-size: 12px;
+}
+.hwCpuTitle {
+  font-size: 20px;
+  letter-spacing: 0.08em;
+}
+.hwValue {
+  fill: #b9cbd6;
+  font-family: "Barlow", var(--font-sans), sans-serif;
+  font-size: 16px;
+}
+.hwOutputSymbol {
+  font-size: 17px;
+}
+.hwOutputValue {
+  fill: #b9cbd6;
+  font-size: 17px;
+}
+.hwFootnote {
+  fill: #8d9daf;
+  font-size: 13px;
+}
+.figure .metaphor {
+  margin: 0 16px 6px;
+  color: #8e9fb1;
   font-size: 11px;
-  letter-spacing: 0;
-}
-.candidateLabel,
-.outputLabel {
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-.formulaLabel {
-  composes: label from "./diagram-type.module.css";
-  /* Keep the mathematical register explicit: Barlow has no Greek capital Σ.
-     The already-loaded mono face covers the complete, unchanged expression. */
-  fill: #aab2c3;
-  font-size: 10.5px;
-  font-weight: 300;
-  letter-spacing: 0.035em;
-}
-.art [data-candidate] {
-  transition: opacity 220ms ease;
-}
-.art[data-highlight="A"] [data-candidate]:not([data-candidate="A"]),
-.art[data-highlight="B"] [data-candidate]:not([data-candidate="B"]),
-.art[data-highlight="C"] [data-candidate]:not([data-candidate="C"]) {
-  opacity: 0.14;
-}
-.explanation {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  min-height: 111px;
-  padding: 20px 24px 17px;
-  color: #a8b5c6;
-  font-size: 12px;
   line-height: 1.6;
 }
-.equation {
-  color: #cbd5e3;
+.stages {
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.stages button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+.stageNumber {
+  color: #7e91a6;
   font-family: var(--font-mono), monospace;
+  font-size: 9px;
+}
+.stageProgress {
+  position: absolute;
+  right: 0;
+  top: 0;
+  left: 0;
+  height: 1px;
+  transform-origin: left;
+  background: linear-gradient(90deg, #9cbfb9, #baa7c8);
+}
+.figure[data-paused="true"] .stages button::after {
+  animation-play-state: paused;
+}
+.explanationRow {
+  display: flex;
+  align-items: center;
+  padding-right: 24px;
+  gap: 12px;
+}
+.step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 68px;
+  min-height: 44px;
+  border: 1px solid #354151;
+  border-radius: 4px;
+  color: #b7c6d6;
+  background: #121820;
+  font-size: 11px;
+  cursor: pointer;
+}
+.step:hover {
+  border-color: #8297ad;
+}
+.step:focus-visible {
+  outline: 2px solid #b7c4df;
+  outline-offset: 3px;
+}
+.explanation {
+  flex: 1;
+  min-height: 74px;
+  padding: 18px 24px;
+  color: #b0bdcc;
   font-size: 12px;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.65;
+}
+.details {
+  padding: 0 24px 18px;
+}
+.details summary {
+  min-height: 44px;
+  align-content: center;
+  color: #9cacc0;
+  font-size: 11px;
+  cursor: pointer;
 }
 .tableWrap {
-  padding: 0 24px 20px;
+  padding: 10px 0 0;
 }
 .figure .table {
   display: table;
   width: 100%;
   margin: 0;
   border-collapse: collapse;
-  border: none;
-  font-family: var(--font-mono), monospace;
-  font-size: 11px;
+  border: 0;
+  font-family: "Barlow", var(--font-sans), sans-serif;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   line-height: 1.6;
 }
 .table caption {
   padding: 0 0 11px;
   color: #95a4b7;
-  font-family: var(--font-sans), sans-serif;
   font-size: 11px;
   text-align: left;
 }
 .figure .table th,
 .figure .table td {
-  padding: 9px 5px;
+  padding: 9px 4px;
   border: 0;
   border-bottom: 1px solid #202934;
   background: transparent;
@@ -282,23 +269,37 @@
   font-weight: 400;
   white-space: nowrap;
 }
-.figure .table thead th {
-  color: #93a3b8;
-  font-family: var(--font-sans), sans-serif;
-}
 .figure .table th:first-child {
   padding-left: 0;
   text-align: left;
 }
-.figure .table th:last-child,
-.figure .table td:last-child {
-  padding-right: 0;
+.tableId {
+  color: #8291a4;
 }
-.table tbody tr {
-  transition: opacity 220ms;
+.equations {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
 }
-.table tr[data-highlighted="false"] {
-  opacity: 0.75;
+.figure .equations p {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 0;
+  color: #a0b0c2;
+  font-size: 11px;
+}
+.figure .equations code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+}
+.figure .rounding {
+  margin: 0;
+  color: #8495a9;
+  font-size: 10px;
 }
 .caption {
   display: grid;
@@ -310,6 +311,10 @@
   font-size: 12px;
   line-height: 1.7;
 }
+.caption strong {
+  font-weight: 500;
+  color: #c6d2db;
+}
 .note {
   color: #94a0b1;
   font-size: 11px;
@@ -320,56 +325,77 @@
   text-decoration-color: #52617a;
   text-underline-offset: 3px;
 }
-@container (max-width: 560px) {
-  .channelLabel {
-    font-size: 11.5px;
-  }
-}
-@container (max-width: 420px) {
-  .channelLabel {
-    font-size: 12.5px;
-  }
-  .rankLabel {
-    font-size: 13px;
-  }
-  .candidateLabel,
-  .outputLabel {
-    font-size: 14px;
-  }
-  .formulaLabel {
-    font-size: 12px;
-  }
+@container (max-width: 680px) {
   .landscape {
     display: none;
   }
   .portrait {
     display: block;
+    max-width: 420px;
+    margin-inline: auto;
   }
-  .candidateWord {
-    display: none;
-  }
+}
+@container (max-width: 520px) {
   .header {
+    align-items: flex-start;
     gap: 10px;
     padding: 20px 16px 0;
+  }
+  .eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.05em;
   }
   .figure .title {
     font-size: 18px;
   }
-  .eyebrow {
-    font-size: 8px;
-    letter-spacing: 0.06em;
+  .motionControls {
+    gap: 2px;
+  }
+  .motion {
+    border-color: transparent;
   }
   .figure .subtitle {
     margin-inline: 16px;
   }
+  .art {
+    padding: 16px 0 12px;
+  }
+  .hwMicro {
+    letter-spacing: 0.025em;
+  }
+  .hwLegend {
+    font-size: 16px;
+    letter-spacing: 0.07em;
+  }
+  .hwOutputSymbol,
+  .hwOutputValue {
+    font-size: 17px;
+  }
+  .hwFootnote {
+    font-size: 12px;
+  }
+  .stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stages button {
+    min-height: 48px;
+  }
+  .stages button:nth-child(-n + 2) {
+    box-shadow: inset 0 -1px #252d38;
+  }
+  .stageNumber {
+    display: block;
+  }
   .explanation {
-    min-height: 132px;
+    min-height: 94px;
     padding-inline: 16px;
   }
-  .equation {
-    font-size: 10px;
+  .explanationRow {
+    padding-right: 16px;
+    gap: 0;
   }
-  .tableWrap {
+  .details,
+  .caption {
     padding-inline: 16px;
   }
   .figure .table {
@@ -377,15 +403,12 @@
   }
   .figure .table th,
   .figure .table td {
-    padding-inline: 3px;
+    padding-inline: 2px;
   }
-  .caption {
-    padding-inline: 16px;
+  .tableId {
+    display: none;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  .art [data-candidate],
-  .table tbody tr {
-    transition: none;
+  .figure .equations code {
+    font-size: 9px;
   }
 }

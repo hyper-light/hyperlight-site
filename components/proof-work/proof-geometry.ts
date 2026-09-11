@@ -6,6 +6,8 @@ export type ProofPath = {
   kind: "glass" | "edge" | "fine" | "light" | "shade" | "rear";
   opacity: number;
   tone?: ProofTone;
+  /** Fixed stroke pattern, such as a disputed geographic boundary. */
+  dashArray?: string;
 };
 
 export type ProofLabel = {

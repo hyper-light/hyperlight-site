@@ -75,6 +75,133 @@
 .sceneLabel {
   composes: legend from "./diagram-type.module.css";
 }
+.operation {
+  fill: none;
+  stroke-width: 0.75;
+  stroke-linecap: square;
+}
+.operation[data-operation="add"] {
+  stroke: #afcec4;
+}
+.operation[data-operation="subtract"] {
+  stroke: #c2aed2;
+}
+.operation[data-operation="multiply"] {
+  stroke: #acc2db;
+}
+.landscape[data-mode="lexical"] [data-embedding-cell][data-sign="1"],
+.portrait[data-mode="lexical"] [data-embedding-cell][data-sign="1"] {
+  fill: #afcec4;
+}
+.landscape[data-mode="lexical"] [data-embedding-cell][data-sign="-1"],
+.portrait[data-mode="lexical"] [data-embedding-cell][data-sign="-1"] {
+  fill: #c2aed2;
+}
+.signalPath {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.signalPath[data-kind="input"] {
+  stroke: #a6ccc3;
+}
+.signalPath[data-kind="compute"] {
+  stroke: #a5bbd7;
+}
+.signalPath[data-kind="reduce"] {
+  stroke: #bfaed0;
+}
+.signalPath[data-kind="output"] {
+  stroke: #d0c4b4;
+}
+.signal {
+  stroke: #d9e4e7;
+  stroke-width: 0.4;
+}
+.gpu [data-embedding-label] {
+  fill: #9bafc0;
+}
+.gpu [data-embedding-label][data-kind="token"] {
+  fill: #b7cecc;
+}
+.gpu [data-embedding-label][data-kind="vector"] {
+  fill: #c9c1bc;
+}
+.gpu [data-embedding-hardware] {
+  stroke-width: 0.7;
+  stroke-opacity: 0.38;
+  stroke-linejoin: round;
+  fill-opacity: 0.08;
+}
+.gpu [data-gpu-kind="board-back"] {
+  fill: #071017;
+  fill-opacity: 0.9;
+  stroke-opacity: 0.3;
+}
+.gpu [data-gpu-kind="board-wall"] {
+  fill: #7795a2;
+  fill-opacity: 0.22;
+  stroke-opacity: 0.48;
+}
+.gpu [data-gpu-kind="board"] {
+  fill: #0c1218;
+  fill-opacity: 0.92;
+  stroke-width: 1;
+  stroke-opacity: 0.64;
+}
+.gpu [data-gpu-kind="trace"] {
+  fill: none;
+  stroke-width: 0.5;
+  stroke-opacity: 0.28;
+}
+.gpu [data-gpu-kind="contact"] {
+  fill: #c0c9a9;
+  fill-opacity: 0.24;
+  stroke-opacity: 0.76;
+}
+.gpu [data-gpu-kind="memory-wall"],
+.gpu [data-gpu-kind="package-wall"] {
+  fill: #8a9fb0;
+  fill-opacity: 0.18;
+  stroke-opacity: 0.36;
+}
+.gpu [data-gpu-kind="memory"] {
+  fill: #0b141c;
+  fill-opacity: 0.96;
+  stroke-opacity: 0.6;
+}
+.gpu [data-gpu-kind="package"] {
+  fill: #0f1721;
+  fill-opacity: 0.9;
+  stroke-width: 0.85;
+  stroke-opacity: 0.72;
+}
+.gpu [data-gpu-kind="socket"] {
+  fill: #080e15;
+  fill-opacity: 0.88;
+  stroke-opacity: 0.44;
+}
+.gpu [data-gpu-kind="pin"] {
+  fill: none;
+  stroke-width: 0.55;
+  stroke-opacity: 0.46;
+}
+.gpu [data-gpu-kind="component"] {
+  fill: #1a222b;
+  fill-opacity: 0.7;
+  stroke-opacity: 0.52;
+}
+.gpu [data-gpu-kind="mount"] {
+  fill: #080e13;
+  fill-opacity: 0.7;
+  stroke-opacity: 0.57;
+}
+.gpu [data-gpu-kind="bracket"] {
+  fill: #34434b;
+  fill-opacity: 0.52;
+  stroke-width: 0.9;
+  stroke-opacity: 0.72;
+}
 .figure .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
