@@ -6,192 +6,228 @@ import {
   type StudyProps,
 } from "@/components/studies/use-study-motion";
 
-type Point = { x: number; y: number; z: number };
-const TAU = Math.PI * 2;
+type Point = [number, number, number];
+type Rail = { axis: number; a: number; b: number; outer: boolean };
 const f = (n: number) => n.toFixed(2);
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
-const TARGETS = [
-  [0.76, -0.57],
-  [0.87, -0.16],
-  [0.77, 0.47],
-  [0.35, 0.79],
-  [-0.13, -0.8],
-  [-0.56, -0.56],
+const AXES = [0, 1, 2];
+const CELL_SIZE = 62;
+const POSITIONS = [-2, -1, 0, 1, 2];
+const RAILS: Rail[] = AXES.flatMap((axis) =>
+  POSITIONS.flatMap((a) =>
+    POSITIONS.map((b) => ({
+      axis,
+      a,
+      b,
+      outer: Math.abs(a) === 2 && Math.abs(b) === 2,
+    })),
+  ),
+);
+const BRANCHES: Point[][] = [
+  [
+    [0, 0, 0],
+    [1, 0, 0],
+    [1, 1, 0],
+    [2, 1, 0],
+    [2, 1, 1],
+  ],
+  [
+    [0, 0, 0],
+    [0, 0, 1],
+    [-1, 0, 1],
+    [-1, -1, 1],
+    [-2, -1, 1],
+  ],
+  [
+    [0, 0, 0],
+    [0, 1, 0],
+    [0, 1, -1],
+    [-1, 1, -1],
+    [-1, 2, -1],
+  ],
+  [
+    [0, 0, 0],
+    [0, 0, -1],
+    [1, 0, -1],
+    [1, -1, -1],
+    [2, -1, -1],
+  ],
 ];
+const ENTRY: Point[] = [
+  [-2, -1, 0],
+  [0, -1, 0],
+  [0, 0, 0],
+];
+const JOURNEYS = BRANCHES.map((branch) => [...ENTRY, ...branch.slice(1)]);
 const palette = [
-  [151, 188, 198],
-  [161, 172, 203],
-  [184, 168, 195],
-  [202, 193, 178],
-  [176, 201, 196],
+  [155, 190, 200],
+  [164, 177, 205],
+  [186, 172, 195],
+  [205, 196, 181],
+  [181, 202, 197],
 ];
 
-function project(p: Point, time: number) {
-  const pitch = 0.73 + Math.sin(time * 0.23) * 0.055;
-  const turn = -0.2 + Math.sin(time * 0.19) * 0.035;
-  const y = p.y * Math.cos(pitch) - p.z * Math.sin(pitch);
-  const depth = p.y * Math.sin(pitch) + p.z * Math.cos(pitch);
-  const scale = (1.22 * 1200) / (1200 - depth);
-  return {
-    x: 319 + (p.x * Math.cos(turn) - y * Math.sin(turn)) * scale,
-    y: 325 + (p.x * Math.sin(turn) + y * Math.cos(turn)) * scale,
-  };
+/** A rigid orthogonal volume. Only the viewpoint and the light move. */
+function project([x, y, z]: Point, time: number) {
+  const yaw = 0.64 + Math.sin(time * 0.2) * 0.06;
+  const pitch = 0.51 + Math.sin(time * 0.17) * 0.035;
+  const horizontal = x * Math.cos(yaw) - z * Math.sin(yaw);
+  const away = x * Math.sin(yaw) + z * Math.cos(yaw);
+  const vertical = y * Math.cos(pitch) - away * Math.sin(pitch);
+  const depth = y * Math.sin(pitch) + away * Math.cos(pitch);
+  const scale = (CELL_SIZE * 1400) / (1400 - depth * CELL_SIZE);
+  return { x: 320 + horizontal * scale, y: 315 - vertical * scale, depth };
 }
 
-function surface(plane: number, u: number, v: number, time: number): Point {
-  const breath = Math.sin(time * 0.38 + u * 1.8 + v) * 3;
-  return plane === 0
-    ? { x: u * 153, y: v * 123, z: 34 * (u * u - v * v) + breath }
-    : {
-        x: 22 * u + 28 * v * v,
-        y: 119 * u,
-        z: 132 * v + 19 * u * u + breath,
-      };
-}
-
-function path(points: Point[], time: number, close = false) {
+function path(points: Point[], time: number, closed = false) {
   return (
     points
       .map((point, i) => {
         const p = project(point, time);
         return `${i ? "L" : "M"}${f(p.x)},${f(p.y)}`;
       })
-      .join("") + (close ? "Z" : "")
+      .join("") + (closed ? "Z" : "")
   );
 }
 
-function boundary(plane: number, time: number, inset = 1) {
+function axisPoint(axis: number, along: number, a: number, b: number): Point {
+  const point: Point = [0, 0, 0];
+  point[axis] = along;
+  point[(axis + 1) % 3] = a;
+  point[(axis + 2) % 3] = b;
+  return point;
+}
+
+function rail(rod: Rail, time: number) {
+  const { axis, a, b, outer } = rod;
+  const width = outer ? 0.011 : 0.007;
+  const corners = [
+    axisPoint(axis, -2, a - width, b),
+    axisPoint(axis, 2, a - width, b),
+    axisPoint(axis, 2, a + width, b),
+    axisPoint(axis, -2, a + width, b),
+  ];
+  return {
+    d: path(corners, time, true),
+    edge: path([corners[0], corners[1]], time),
+    depth: project(axisPoint(axis, 0, a, b), time).depth,
+    opacity: outer ? ".71" : f(0.27 + (a + b + 4) * 0.025),
+  };
+}
+
+function face(
+  axis: number,
+  position: number,
+  low: number,
+  high: number,
+  time: number,
+) {
   return path(
-    Array.from({ length: 97 }, (_, i) => {
-      const angle = (i / 96) * TAU;
-      const c = Math.cos(angle),
-        s = Math.sin(angle);
-      return surface(
-        plane,
-        Math.sign(c) * Math.sqrt(Math.abs(c)) * inset,
-        Math.sign(s) * Math.sqrt(Math.abs(s)) * inset,
-        time,
-      );
-    }),
+    [
+      axisPoint(axis, position, low, low),
+      axisPoint(axis, position, high, low),
+      axisPoint(axis, position, high, high),
+      axisPoint(axis, position, low, high),
+    ],
     time,
     true,
   );
 }
 
-function mesh(plane: number, index: number, time: number) {
-  const alongU = index < 25;
-  const fixed = ((index % 25) - 12) / 13;
-  const reach = Math.pow(1 - fixed ** 4, 0.25);
-  return path(
-    Array.from({ length: 29 }, (_, i) => {
-      const moving = (i / 14 - 1) * reach;
-      return surface(
-        plane,
-        alongU ? moving : fixed,
-        alongU ? fixed : moving,
-        time,
-      );
-    }),
-    time,
-  );
+// Three fine subdivisions in every square on the three visible boundary faces.
+function engraving(axis: number, index: number, time: number) {
+  const sub = index % 12;
+  const position = -2 + Math.floor(sub / 3) + ((sub % 3) + 1) / 4;
+  const points =
+    index < 12
+      ? [axisPoint(axis, 2, -2, position), axisPoint(axis, 2, 2, position)]
+      : [axisPoint(axis, 2, position, -2), axisPoint(axis, 2, position, 2)];
+  return path(points, time);
 }
 
-function cubic(a: Point, b: Point, c: Point, d: Point, t: number): Point {
-  const s = 1 - t;
-  return {
-    x: s ** 3 * a.x + 3 * s * s * t * b.x + 3 * s * t * t * c.x + t ** 3 * d.x,
-    y: s ** 3 * a.y + 3 * s * s * t * b.y + 3 * s * t * t * c.y + t ** 3 * d.y,
-    z: s ** 3 * a.z + 3 * s * s * t * b.z + 3 * s * t * t * c.z + t ** 3 * d.z,
-  };
+/** Sample a Manhattan polyline by distance; turns remain anchored to junctions. */
+function along(points: Point[], distance: number): Point {
+  let remaining = distance;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1],
+      b = points[i];
+    const length =
+      Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]) + Math.abs(b[2] - a[2]);
+    if (remaining <= length) {
+      const t = clamp(remaining / length);
+      return [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+      ];
+    }
+    remaining -= length;
+  }
+  return points[points.length - 1];
 }
 
-function route(index: number, progress: number, time: number) {
-  const gate = surface(0, 0, 0, time);
-  if (progress <= 0.4)
-    return cubic(
-      { x: -148, y: 88, z: -30 },
-      { x: -108, y: 95, z: -29 },
-      { x: -46, y: -3, z: gate.z },
-      gate,
-      progress / 0.4,
+function packet(points: Point[], head: number, time: number) {
+  const start = Math.max(0, head - 0.6);
+  const vertices: Point[] = [along(points, start)];
+  let distance = 0;
+  for (let i = 1; i < points.length; i++) {
+    distance += points[i].reduce(
+      (sum, value, axis) => sum + Math.abs(value - points[i - 1][axis]),
+      0,
     );
-  const [u, v] = TARGETS[index];
-  const target = surface(0, u, v, time);
-  return cubic(
-    gate,
-    { x: 39, y: v * 12, z: gate.z + 6 },
-    { x: target.x * 0.93, y: target.y * 0.67, z: target.z + 26 },
-    { ...target, z: target.z + 1.6 },
-    (progress - 0.4) / 0.6,
-  );
+    if (distance > start && distance < head) vertices.push(points[i]);
+  }
+  vertices.push(along(points, head));
+  return path(vertices, time);
 }
 
-function segment(index: number, start: number, end: number, time: number) {
+function square(center: Point, radius: number, time: number) {
   return path(
-    Array.from({ length: 33 }, (_, i) =>
-      route(index, start + ((end - start) * i) / 32, time),
-    ),
-    time,
-  );
-}
-
-function aperture(time: number, radius: number) {
-  const center = surface(0, 0, 0, time);
-  return path(
-    Array.from({ length: 65 }, (_, i) => {
-      const angle = (i / 64) * TAU;
-      return {
-        x: center.x + Math.cos(angle) * radius * 0.185,
-        y: center.y + Math.cos(angle) * radius,
-        z: center.z + Math.sin(angle) * radius,
-      };
-    }),
+    [
+      [center[0], center[1] - radius, center[2] - radius],
+      [center[0], center[1] + radius, center[2] - radius],
+      [center[0], center[1] + radius, center[2] + radius],
+      [center[0], center[1] - radius, center[2] + radius],
+    ],
     time,
     true,
   );
 }
 
 function frame(time: number) {
-  const phases = TARGETS.map((_, i) => (time * 0.135 + i / TARGETS.length) % 1);
+  const phases = BRANCHES.map((_, i) => (time * 0.115 + i / 4) % 1);
   const arrival = (phase: number, at: number) =>
-    Math.exp(-Math.pow((phase - at) / 0.055, 2));
+    Math.exp(-Math.pow((phase - at) / 0.048, 2));
   return {
-    planes: [1, 0].map((plane) => ({
-      body: boundary(plane, time),
-      rim: boundary(plane, time, 0.982),
-      mesh: Array.from({ length: 50 }, (_, i) => mesh(plane, i, time)),
-    })),
-    routes: [
-      segment(0, 0, 0.4, time),
-      ...TARGETS.map((_, i) => segment(i, 0.4, 1, time)),
-    ],
-    packets: phases.map((phase, i) => ({
-      d: segment(i, clamp(phase - 0.064), phase, time),
-      opacity: f(Math.min(1, phase * 15, (1 - phase) * 20) * 0.84),
-    })),
-    aperture: [aperture(time, 13), aperture(time, 17.5)],
-    gateLight: f(
-      0.35 + Math.max(...phases.map((phase) => arrival(phase, 0.4))) * 0.55,
+    hull: AXES.map((axis) => face(axis, 2, -2, 2, time)),
+    regions: AXES.flatMap((axis) => [
+      face(axis, 0, -2, 0, time),
+      face(axis, 2, 0, 2, time),
+    ]),
+    rails: RAILS.map((rod) => rail(rod, time)).sort(
+      (a, b) => a.depth - b.depth,
     ),
-    endpoints: TARGETS.map(([u, v], i) => ({
-      d: path(
-        Array.from({ length: 5 }, (_, j) => {
-          const angle = (j / 4) * TAU;
-          const p = surface(
-            0,
-            u + Math.cos(angle) * 0.027,
-            v + Math.sin(angle) * 0.036,
-            time,
-          );
-          return { ...p, z: p.z + 2 };
-        }),
-        time,
-        true,
-      ),
-      opacity: f(0.34 + arrival(phases[i], 0.955) * 0.66),
+    engraving: AXES.flatMap((axis) =>
+      Array.from({ length: 24 }, (_, i) => engraving(axis, i, time)),
+    ),
+    routes: [
+      path(ENTRY, time),
+      ...BRANCHES.map((branch) => path(branch, time)),
+    ],
+    packets: JOURNEYS.map((points, i) => ({
+      d: packet(points, phases[i] * 7, time),
+      opacity: f(Math.min(1, phases[i] * 20, (1 - phases[i]) * 20) * 0.88),
+    })),
+    aperture: [square([0, 0, 0], 0.16, time), square([0, 0, 0], 0.22, time)],
+    gateLight: f(
+      0.46 + Math.max(...phases.map((phase) => arrival(phase, 3 / 7))) * 0.5,
+    ),
+    endpoints: BRANCHES.map((branch, i) => ({
+      d: square(branch[branch.length - 1], 0.065, time),
+      opacity: f(0.44 + arrival(phases[i], 0.96) * 0.56),
     })),
     colors: palette.map((_, i) => {
-      const p = (i + time * 0.17) % palette.length;
+      const p = (i + time * 0.15) % palette.length;
       const a = Math.floor(p),
         b = (a + 1) % palette.length;
       return `rgb(${palette[a].map((c, j) => Math.round(c + (palette[b][j] - c) * (p - a))).join(",")})`;
@@ -201,8 +237,10 @@ function frame(time: number) {
 
 const FIRST = frame(0);
 type Nodes = {
-  planes: SVGPathElement[][];
-  meshes: SVGPathElement[][];
+  hull: SVGPathElement[];
+  regions: SVGPathElement[];
+  rails: SVGPathElement[][];
+  engraving: SVGPathElement[];
   routes: SVGPathElement[];
   packets: SVGPathElement[];
   aperture: SVGPathElement[];
@@ -215,28 +253,19 @@ const cache = new WeakMap<SVGSVGElement, Nodes>();
 function update(svg: SVGSVGElement, time: number) {
   let nodes = cache.get(svg);
   if (!nodes) {
-    const planes = Array.from(svg.querySelectorAll("[data-grid-plane]"));
+    const paths = (selector: string) =>
+      Array.from(svg.querySelectorAll<SVGPathElement>(selector));
     nodes = {
-      planes: planes.map((plane) =>
-        Array.from(
-          plane.querySelectorAll<SVGPathElement>("[data-grid-boundary]"),
-        ),
+      hull: paths("[data-grid-hull]"),
+      regions: paths("[data-grid-region]"),
+      rails: Array.from(svg.querySelectorAll("[data-grid-rail]")).map((group) =>
+        Array.from(group.querySelectorAll<SVGPathElement>("path")),
       ),
-      meshes: planes.map((plane) =>
-        Array.from(plane.querySelectorAll<SVGPathElement>("[data-grid-mesh]")),
-      ),
-      routes: Array.from(
-        svg.querySelectorAll<SVGPathElement>("[data-grid-route]"),
-      ),
-      packets: Array.from(
-        svg.querySelectorAll<SVGPathElement>("[data-grid-packet]"),
-      ),
-      aperture: Array.from(
-        svg.querySelectorAll<SVGPathElement>("[data-grid-aperture]"),
-      ),
-      endpoints: Array.from(
-        svg.querySelectorAll<SVGPathElement>("[data-grid-endpoint]"),
-      ),
+      engraving: paths("[data-grid-engraving]"),
+      routes: paths("[data-grid-route]"),
+      packets: paths("[data-grid-packet]"),
+      aperture: paths("[data-grid-aperture]"),
+      endpoints: paths("[data-grid-endpoint]"),
       stops: Array.from(
         svg.querySelectorAll<SVGStopElement>("[data-grid-spectrum] stop"),
       ),
@@ -245,15 +274,18 @@ function update(svg: SVGSVGElement, time: number) {
     cache.set(svg, nodes);
   }
   const pose = frame(time);
-  pose.planes.forEach((plane, i) => {
-    nodes.planes[i][0].setAttribute("d", plane.body);
-    nodes.planes[i][1].setAttribute("d", plane.rim);
-    plane.mesh.forEach((d, j) => nodes.meshes[i][j].setAttribute("d", d));
+  pose.hull.forEach((d, i) => nodes.hull[i].setAttribute("d", d));
+  pose.regions.forEach((d, i) => nodes.regions[i].setAttribute("d", d));
+  pose.rails.forEach((rod, i) => {
+    nodes.rails[i][0].setAttribute("d", rod.d);
+    nodes.rails[i][1].setAttribute("d", rod.edge);
+    nodes.rails[i][1].setAttribute("opacity", rod.opacity);
   });
+  pose.engraving.forEach((d, i) => nodes.engraving[i].setAttribute("d", d));
   pose.routes.forEach((d, i) => nodes.routes[i].setAttribute("d", d));
-  pose.packets.forEach((packet, i) => {
-    nodes.packets[i].setAttribute("d", packet.d);
-    nodes.packets[i].setAttribute("opacity", packet.opacity);
+  pose.packets.forEach((p, i) => {
+    nodes.packets[i].setAttribute("d", p.d);
+    nodes.packets[i].setAttribute("opacity", p.opacity);
   });
   pose.aperture.forEach((d, i) => {
     nodes.aperture[i].setAttribute("d", d);
@@ -268,11 +300,11 @@ function update(svg: SVGSVGElement, time: number) {
   );
   nodes.reflection?.setAttribute(
     "gradientTransform",
-    `translate(${f(Math.sin(time * 0.27) * 45)} ${f(Math.cos(time * 0.27) * 28)})`,
+    `translate(${f(Math.sin(time * 0.25) * 46)} ${f(Math.cos(time * 0.25) * 25)})`,
   );
 }
 
-/** A conceptual network: curved private spaces, a policy aperture, and routed light. */
+/** A private rectilinear network with shared junctions and orthogonal light routes. */
 export function GridStudy({ paused = false, className }: StudyProps) {
   const ref = useRef<SVGSVGElement>(null);
   const id = `grid-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -288,87 +320,91 @@ export function GridStudy({ paused = false, className }: StudyProps) {
     >
       <defs>
         <linearGradient
-          id={`${id}-film`}
+          id={`${id}-glass`}
           data-grid-reflection
-          x1="170"
-          y1="170"
-          x2="460"
-          y2="480"
+          x1="151"
+          y1="139"
+          x2="492"
+          y2="503"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#a8bcc9" stopOpacity=".035" />
-          <stop offset=".26" stopColor="#849baa" stopOpacity=".08" />
-          <stop offset=".41" stopColor="#cfdae0" stopOpacity=".19" />
-          <stop offset=".47" stopColor="#acbecb" stopOpacity=".065" />
-          <stop offset=".67" stopColor="#84929f" stopOpacity=".025" />
-          <stop offset="1" stopColor="#aabfc7" stopOpacity=".1" />
+          <stop stopColor="#a5c1cf" stopOpacity=".035" />
+          <stop offset=".3" stopColor="#aabaca" stopOpacity=".065" />
+          <stop offset=".44" stopColor="#d2dce2" stopOpacity=".15" />
+          <stop offset=".5" stopColor="#92a5b9" stopOpacity=".045" />
+          <stop offset=".72" stopColor="#7a98a9" stopOpacity=".018" />
+          <stop offset="1" stopColor="#b0c5cf" stopOpacity=".08" />
         </linearGradient>
         <linearGradient
           id={`${id}-silver`}
-          x1="175"
-          y1="175"
-          x2="456"
-          y2="473"
+          x1="147"
+          y1="148"
+          x2="485"
+          y2="506"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#bdd0d9" stopOpacity=".38" />
-          <stop offset=".32" stopColor="#a1aebf" stopOpacity=".21" />
-          <stop offset=".69" stopColor="#d5dde1" stopOpacity=".44" />
-          <stop offset="1" stopColor="#9bb7c2" stopOpacity=".19" />
+          <stop stopColor="#bdd0dc" stopOpacity=".72" />
+          <stop offset=".37" stopColor="#9bacc2" stopOpacity=".42" />
+          <stop offset=".69" stopColor="#d3dce3" stopOpacity=".8" />
+          <stop offset="1" stopColor="#a7c4ca" stopOpacity=".48" />
         </linearGradient>
         <linearGradient
           id={`${id}-spectrum`}
           data-grid-spectrum
-          x1="142"
-          y1="432"
-          x2="477"
-          y2="173"
+          x1="144"
+          y1="471"
+          x2="483"
+          y2="163"
           gradientUnits="userSpaceOnUse"
         >
           {FIRST.colors.map((color, i) => (
             <stop key={i} offset={i / 4} stopColor={color} />
           ))}
         </linearGradient>
-        <radialGradient id={`${id}-ambient`}>
-          <stop stopColor="#8faec1" stopOpacity=".04" />
-          <stop offset="1" stopColor="#8faec1" stopOpacity="0" />
-        </radialGradient>
       </defs>
-      <ellipse
-        cx="320"
-        cy="321"
-        rx="218"
-        ry="194"
-        fill={`url(#${id}-ambient)`}
-      />
-      {FIRST.planes.map((plane, i) => (
-        <g key={i} data-grid-plane={i}>
+      <g
+        fill={`url(#${id}-glass)`}
+        stroke={`url(#${id}-silver)`}
+        strokeWidth=".55"
+        strokeOpacity=".25"
+      >
+        {FIRST.hull.map((d, i) => (
+          <path key={i} data-grid-hull d={d} />
+        ))}
+      </g>
+      <g
+        fill={`url(#${id}-spectrum)`}
+        fillOpacity=".025"
+        stroke={`url(#${id}-spectrum)`}
+        strokeWidth=".6"
+        strokeOpacity=".12"
+      >
+        {FIRST.regions.map((d, i) => (
+          <path key={i} data-grid-region d={d} />
+        ))}
+      </g>
+      <g stroke={`url(#${id}-silver)`} strokeWidth=".4" opacity=".13">
+        {FIRST.engraving.map((d, i) => (
+          <path key={i} data-grid-engraving d={d} />
+        ))}
+      </g>
+      {FIRST.rails.map((rod, i) => (
+        <g key={i} data-grid-rail>
+          <path d={rod.d} fill={`url(#${id}-spectrum)`} fillOpacity=".075" />
           <path
-            data-grid-boundary
-            d={plane.body}
-            fill={`url(#${id}-film)`}
+            d={rod.edge}
             stroke={`url(#${id}-silver)`}
-            strokeWidth=".7"
-          />
-          <g
-            stroke={`url(#${id}-silver)`}
-            strokeWidth=".47"
-            opacity={i === 0 ? ".49" : ".62"}
-          >
-            {plane.mesh.map((d, j) => (
-              <path key={j} data-grid-mesh d={d} />
-            ))}
-          </g>
-          <path
-            data-grid-boundary
-            d={plane.rim}
-            stroke={`url(#${id}-spectrum)`}
-            strokeWidth=".52"
-            opacity=".22"
+            strokeWidth=".65"
+            opacity={rod.opacity}
           />
         </g>
       ))}
-      <g stroke={`url(#${id}-spectrum)`} strokeWidth=".75" opacity=".23">
+      <g
+        stroke={`url(#${id}-spectrum)`}
+        strokeWidth=".8"
+        strokeLinejoin="miter"
+        opacity=".36"
+      >
         {FIRST.routes.map((d, i) => (
           <path key={i} data-grid-route d={d} />
         ))}
@@ -379,22 +415,18 @@ export function GridStudy({ paused = false, className }: StudyProps) {
           data-grid-aperture
           d={d}
           stroke={i ? `url(#${id}-silver)` : `url(#${id}-spectrum)`}
-          strokeWidth={i ? ".6" : "1.05"}
+          strokeWidth={i ? ".65" : "1"}
           opacity={FIRST.gateLight}
         />
       ))}
       <g
         stroke={`url(#${id}-spectrum)`}
-        strokeWidth="1.4"
+        strokeWidth="1.55"
+        strokeLinejoin="miter"
         strokeLinecap="round"
       >
-        {FIRST.packets.map((packet, i) => (
-          <path
-            key={i}
-            data-grid-packet
-            d={packet.d}
-            opacity={packet.opacity}
-          />
+        {FIRST.packets.map((p, i) => (
+          <path key={i} data-grid-packet d={p.d} opacity={p.opacity} />
         ))}
       </g>
       {FIRST.endpoints.map((endpoint, i) => (
@@ -405,7 +437,7 @@ export function GridStudy({ paused = false, className }: StudyProps) {
           stroke={`url(#${id}-spectrum)`}
           strokeWidth=".85"
           fill={`url(#${id}-spectrum)`}
-          fillOpacity=".14"
+          fillOpacity=".19"
           opacity={endpoint.opacity}
         />
       ))}

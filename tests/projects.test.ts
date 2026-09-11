@@ -113,3 +113,16 @@ test("Grid and Ergo have distinct, populated marks at both icon sizes", () => {
     assert.notEqual(marks[0], marks[1]);
   }
 });
+
+test("every project mark inherits the shared icon color and stroke weight", () => {
+  for (const { slug } of projects) {
+    const markup = renderToStaticMarkup(
+      createElement(ProjectMark, { slug, width: 22, height: 22 }),
+    );
+    assert.match(markup, /^<svg /, `${slug} must be an inline icon`);
+    assert.match(markup, /stroke="currentColor"/);
+    assert.match(markup, /stroke-width="1.4"/);
+    assert.doesNotMatch(markup, /<(?:img|image)\b/);
+    assert.doesNotMatch(markup, /(?:fill|stroke)="(?:#|rgb|white)/);
+  }
+});

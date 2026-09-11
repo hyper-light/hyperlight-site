@@ -1,23 +1,9 @@
 import type { SVGProps } from "react";
-import Image from "next/image";
 
 export function ProjectMark({
   slug,
   ...props
 }: SVGProps<SVGSVGElement> & { slug: string }) {
-  if (slug === "slates")
-    return (
-      <Image
-        src="/brand/slates-tablets.svg"
-        alt=""
-        aria-hidden="true"
-        width={Number(props.width ?? 32)}
-        height={Number(props.height ?? 32)}
-        className={props.className}
-        unoptimized
-        data-project-mark={slug}
-      />
-    );
   return (
     <svg
       width="32"
@@ -32,6 +18,15 @@ export function ProjectMark({
       data-project-mark={slug}
       {...props}
     >
+      {slug === "slates" && (
+        <>
+          <path d="m8 14.8-6 4.4 14.1 6.6 9-6.6-1.1-.5" opacity=".65" />
+          <path d="M2 19.2v1.2L16.1 27l9-6.6v-1.2m-9 6.6V27" opacity=".4" />
+          <path d="m17 3 12.3 6v1.2L20 18.3 7.7 12.3v-1.2L17 3Z" />
+          <path d="m7.7 11.1 12.3 6L29.3 9M20 17.1v1.2" opacity=".45" />
+          <path d="m13.7 5.8 6.2 3-2.8 2.5 6.2 3" opacity=".65" />
+        </>
+      )}
       {slug === "vorpal" && (
         <>
           <path
@@ -150,27 +145,36 @@ export function ProjectMark({
       )}
       {slug === "grid" && (
         <>
+          <path d="m16 3 13 7.5v11L16 29 3 21.5v-11L16 3Z" opacity=".7" />
           <path
-            d="m3 10 13-7 13 7-13 7-13-7Zm0 12 13-7 13 7-13 7-13-7Z"
+            d="m3 10.5 13 7.5 13-7.5M16 18v11M9.5 6.75l13 7.5v11M22.5 6.75l-13 7.5v11"
+            opacity=".4"
+          />
+          <path
+            d="m3 16 13 7.5L29 16m-19.5 3.75 6.5-3.75 6.5 3.75"
             opacity=".5"
           />
-          <path
-            d="M3 10v12m13-5v12m13-19v12M9.5 6.5l13 7m-13 12 13-7"
-            opacity=".35"
-          />
-          <path d="m7 12 9 5v7m0-7 9-5" />
-          <circle cx="16" cy="17" r="2" fill="currentColor" fillOpacity=".2" />
+          <path d="m9.5 14.25 6.5 3.75v5.5l6.5-3.75" />
         </>
       )}
       {slug === "ergo" && (
         <>
-          <path d="M2 16h8m9 0h11M18 12c4 0 5-6 12-6m-12 14c4 0 5 6 12 6" />
           <path
-            d="M10 16c0-6 3-11 6-11s5 5 5 11-2 11-5 11-6-5-6-11Z"
+            d="M12.9 4.4a12 12 0 0 1 6.2 0M24.5 7.5a12 12 0 0 1 3.1 5.4m0 6.2a12 12 0 0 1-3.1 5.4M19.1 27.6a12 12 0 0 1-6.2 0M7.5 24.5a12 12 0 0 1-3.1-5.4m0-6.2a12 12 0 0 1 3.1-5.4"
+            opacity=".6"
+          />
+          <path
+            d="M16 12V6m3.5 8 5.2-3m-5.2 7 5.2 3M16 20v6m-3.5-8-5.2 3m5.2-7-5.2-3"
             opacity=".55"
           />
-          <path d="M16 5c-3 7-3 15 0 22m0-22c3 7 3 15 0 22" opacity=".35" />
-          <circle cx="16" cy="16" r="2" fill="currentColor" fillOpacity=".2" />
+          <path d="M13.5 6h5m5 2.8 2.5 4.4m0 5.6-2.5 4.4M18.5 26h-5m-5-2.8L6 18.8m0-5.6 2.5-4.4" />
+          <circle
+            cx="16"
+            cy="16"
+            r="3.5"
+            fill="currentColor"
+            fillOpacity=".12"
+          />
         </>
       )}
     </svg>

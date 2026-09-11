@@ -94,8 +94,8 @@ export const studies = [
   {
     id: "grid",
     name: "Grid",
-    title: "Routing",
-    description: "Private spaces, connected by deliberate paths.",
+    title: "Connection",
+    description: "Private networks, connected.",
   },
   {
     id: "ergo",

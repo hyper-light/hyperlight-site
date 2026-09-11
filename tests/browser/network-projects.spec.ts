@@ -3,9 +3,36 @@ import { projects } from "../../lib/projects";
 import { studies } from "../../lib/studies";
 
 const additions = [
-  { slug: "grid", name: "Grid", title: "Routing" },
+  { slug: "grid", name: "Grid", title: "Connection" },
   { slug: "ergo", name: "Ergo", title: "Distribution" },
 ];
+
+test("Slates inherits the ecosystem icon colors at rest and on hover", async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const strip = page.locator(".ecosystem-projects");
+  const slates = strip.getByRole("link", { name: "Slates", exact: true });
+  const vorpal = strip.getByRole("link", { name: "Vorpal", exact: true });
+  const icon = slates.locator("svg[data-project-mark=slates]");
+  const peerIcon = vorpal.locator("svg[data-project-mark=vorpal]");
+  await slates.scrollIntoViewIfNeeded();
+  await expect(icon).toHaveCSS("color", "rgb(161, 163, 170)");
+  await expect(icon).toHaveCSS("stroke", "rgb(161, 163, 170)");
+  await expect(peerIcon).toHaveCSS("stroke", "rgb(161, 163, 170)");
+  await expect(icon).toHaveAttribute("stroke-width", "1.4");
+  if (!isMobile) {
+    await slates.hover();
+    await expect(icon).toHaveCSS("stroke", "rgb(238, 238, 238)");
+    await vorpal.hover();
+    await expect(peerIcon).toHaveCSS("stroke", "rgb(238, 238, 238)");
+    await expect(icon).toHaveCSS("stroke", "rgb(161, 163, 170)");
+    await page.mouse.move(0, 0);
+  }
+  await strip.screenshot({ path: testInfo.outputPath("ecosystem-icons.png") });
+});
 
 async function geometry(art: Locator) {
   return art.locator("path").evaluateAll((paths) => {
