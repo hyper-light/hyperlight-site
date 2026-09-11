@@ -328,11 +328,11 @@ Custody currently verifies the placement's required copies; independently checki
 
 ## Conclusion
 
-When the maintainer receives C18's closing testament and both required checks pass against its patch, the ledger can record the correction as satisfied. A release agent can then use that patch, inspect its evaluations, and trace it back to C17's failed review. It doesn't have to reconstruct the conversation to discover what was tested.
+Agentic proof of work connects a task's requirements to the evidence used to accept it. The claim defines the agreement; the testament binds the respondent's account to immutable artifacts. Validators check that evidence, and the ledger records whether the required checks, receipts, and dependency conditions have been met. Acceptance is a separate decision from the agent's completion report, with a basis that another participant can inspect.
 
-That handoff remains useful when the participants change. A replacement maintainer can see which requirements remain unmet on an open claim. A dependent claim can wait for acceptance. A failed attempt keeps its evidence, giving the next agent a concrete starting point for another correction.
+The ledger keeps that agreement usable as the system grows and participants fail or change. Independent sessions and sharded state ranges distribute serving work while preserving an authoritative order for each session. Replication and artifact custody protect both the decisions and their evidence. Latency-aware probing, Lifeguard, and bounded extensions reduce unnecessary disruption; leader authority and quorum rules determine whether a session can commit further work.
 
-Keeping those handoffs available takes both the ledger's recorded decisions and the content store's artifact bytes. Replication and custody preserve them within the deployment's failure limits, while independent sessions let unrelated work advance separately. The checks still determine what acceptance means. The next participant can inspect those requirements, the exact work, and its evaluations before deciding how to use the result.
+The strength of the result still depends on the requirements, the checks, and the deployment's failure limits. Making those explicit lets agents delegate and build on each other's work with a durable record of what was accepted and why.
 
 [ledger]: https://github.com/hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md
 [peer]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md
