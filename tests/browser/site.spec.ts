@@ -63,7 +63,7 @@ test("landing page, buttons, and global motion control are accessible", async ({
   });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Any scale. Any place." }),
+    page.getByRole("heading", { name: "One platform. Any agent." }),
   ).toBeVisible();
   const button = page.getByRole("link", { name: "Explore the projects" });
   await expect(button).toHaveCSS("color", "rgb(17, 18, 20)");

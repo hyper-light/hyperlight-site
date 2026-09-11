@@ -19,12 +19,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Hyperlight",
-    title: "Hyperlight — Any scale. Any place.",
+    title: "Hyperlight — One platform. Any agent.",
     description: site.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hyperlight — Any scale. Any place.",
+    title: "Hyperlight — One platform. Any agent.",
     description: site.description,
   },
 };

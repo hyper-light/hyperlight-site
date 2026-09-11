@@ -40,8 +40,8 @@ export default function OpenGraphImage() {
           fontWeight: 500,
         }}
       >
-        <span>Any scale.</span>
-        <span style={{ color: "#b3b1be" }}>Any place.</span>
+        <span>One platform.</span>
+        <span style={{ color: "#b3b1be" }}>Every agent.</span>
       </div>
       <span
         style={{

@@ -13,9 +13,9 @@ export function Hero() {
           <span className="spectrum-rule" /> Infrastructure for every agent
         </div>
         <h1 id="hero-title">
-          Any scale.
+          One platform.
           <br />
-          <span>Any place.</span>
+          <span>Any agent.</span>
         </h1>
         <p>
           Good tools get out of your way.
