@@ -10,6 +10,8 @@ const newStudyIds: StudyId[] = [
   "hoard",
   "quiver",
   "clarion",
+  "grid",
+  "ergo",
 ];
 
 async function fingerprint(art: Locator) {

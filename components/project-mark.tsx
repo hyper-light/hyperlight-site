@@ -148,6 +148,31 @@ export function ProjectMark({
           <path d="m16 14 2 2-2 2-2-2 2-2Z" fill="currentColor" />
         </>
       )}
+      {slug === "grid" && (
+        <>
+          <path
+            d="m3 10 13-7 13 7-13 7-13-7Zm0 12 13-7 13 7-13 7-13-7Z"
+            opacity=".5"
+          />
+          <path
+            d="M3 10v12m13-5v12m13-19v12M9.5 6.5l13 7m-13 12 13-7"
+            opacity=".35"
+          />
+          <path d="m7 12 9 5v7m0-7 9-5" />
+          <circle cx="16" cy="17" r="2" fill="currentColor" fillOpacity=".2" />
+        </>
+      )}
+      {slug === "ergo" && (
+        <>
+          <path d="M2 16h8m9 0h11M18 12c4 0 5-6 12-6m-12 14c4 0 5 6 12 6" />
+          <path
+            d="M10 16c0-6 3-11 6-11s5 5 5 11-2 11-5 11-6-5-6-11Z"
+            opacity=".55"
+          />
+          <path d="M16 5c-3 7-3 15 0 22m0-22c3 7 3 15 0 22" opacity=".35" />
+          <circle cx="16" cy="16" r="2" fill="currentColor" fillOpacity=".2" />
+        </>
+      )}
     </svg>
   );
 }

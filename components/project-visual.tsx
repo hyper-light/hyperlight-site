@@ -21,7 +21,7 @@ export function ProjectVisual({
       className={`project-visual visual-${slug}${large ? " visual-large" : ""}`}
       aria-hidden="true"
     >
-      <div className="visual-grid" />
+      <div className="project-visual-grid" />
       {study ? (
         <ProjectStudy
           id={study.id}

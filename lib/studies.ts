@@ -91,6 +91,18 @@ export const studies = [
     title: "Resonance",
     description: "A signal travels. The right things respond.",
   },
+  {
+    id: "grid",
+    name: "Grid",
+    title: "Routing",
+    description: "Private spaces, connected by deliberate paths.",
+  },
+  {
+    id: "ergo",
+    name: "Ergo",
+    title: "Distribution",
+    description: "One incoming stream. The load shared across many paths.",
+  },
 ] as const;
 
 export type StudyId = (typeof studies)[number]["id"];

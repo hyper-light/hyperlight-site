@@ -368,6 +368,40 @@ export const projects: Project[] = [
     ],
     features: [],
   },
+  {
+    slug: "grid",
+    name: "Grid",
+    tagline: "Private networks. Deliberate routes.",
+    description:
+      "A networking layer in design, covering hyperplane, virtual private clouds, routing, and security groups.",
+    category: "Networking",
+    language: null,
+    status: "In design",
+    repository: "https://github.com/hyper-light/grid",
+    featured: false,
+    overview: [
+      "Grid brings hyperplane networking, virtual private clouds, routing, and security groups into one project. The goal is to give workloads a network of their own, with deliberate routes and access boundaries.",
+      "The project currently establishes that scope. There’s no networking implementation yet; interfaces, supported environments, and traffic policies remain to be designed and documented.",
+    ],
+    features: [],
+  },
+  {
+    slug: "ergo",
+    name: "Ergo",
+    tagline: "Direct traffic. Share the load.",
+    description:
+      "An L4/L7 load-balancing project for distributing traffic at the transport and application layers, with high performance as its design goal.",
+    category: "Load balancing",
+    language: null,
+    status: "In design",
+    repository: "https://github.com/hyper-light/ergo",
+    featured: false,
+    overview: [
+      "Ergo is being designed to distribute traffic at both the transport layer (L4) and application layer (L7). Its focus is a high-performance load balancer for the services behind that traffic.",
+      "The project is at its beginning. There’s no implementation or benchmark yet; balancing policies, supported protocols, and deployment details remain to be established.",
+    ],
+    features: [],
+  },
 ];
 
 export function getProject(slug: string): Project | undefined {

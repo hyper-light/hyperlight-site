@@ -78,6 +78,16 @@ const artwork = {
       default: module.ClarionStudy,
     })),
   ),
+  grid: lazy(() =>
+    import("@/components/studies/grid").then((module) => ({
+      default: module.GridStudy,
+    })),
+  ),
+  ergo: lazy(() =>
+    import("@/components/studies/ergo").then((module) => ({
+      default: module.ErgoStudy,
+    })),
+  ),
 } satisfies Record<StudyId, ComponentType<StudyProps>>;
 
 /** A single lazy renderer keeps the landing gallery and project pages in sync. */

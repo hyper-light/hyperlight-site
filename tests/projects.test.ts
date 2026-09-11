@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getProject, projects } from "../lib/projects";
 import { studies } from "../lib/studies";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ProjectMark } from "../components/project-mark";
 
 const newProjects = [
   ["hex", "Hex"],
@@ -11,6 +14,8 @@ const newProjects = [
   ["hoard", "Hoard"],
   ["quiver", "Quiver"],
   ["clarion", "Clarion"],
+  ["grid", "Grid"],
+  ["ergo", "Ergo"],
 ] as const;
 
 test("the catalog includes every newly requested project with its source and honest stage", () => {
@@ -91,4 +96,20 @@ test("existing projects remain available alongside the new inventory", () => {
     assert.ok(getProject(slug), `${slug} should retain its route`);
   }
   assert.equal(getProject("not-a-project"), undefined);
+});
+
+test("Grid and Ergo have distinct, populated marks at both icon sizes", () => {
+  for (const size of [22, 37]) {
+    const marks = ["grid", "ergo"].map((slug) => {
+      const markup = renderToStaticMarkup(
+        createElement(ProjectMark, { slug, width: size, height: size }),
+      );
+      assert.match(markup, new RegExp(`data-project-mark="${slug}"`));
+      assert.match(markup, /viewBox="0 0 32 32"/);
+      assert.match(markup, /aria-hidden="true"/);
+      assert.ok((markup.match(/<path /g) ?? []).length >= 3);
+      return markup.replaceAll(slug, "project");
+    });
+    assert.notEqual(marks[0], marks[1]);
+  }
 });
