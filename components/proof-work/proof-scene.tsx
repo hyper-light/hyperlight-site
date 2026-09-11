@@ -208,7 +208,8 @@ export function ProofScene({
           data-proof-kind={path.kind}
           className={styles[path.kind]}
           d={path.d}
-          opacity={path.opacity}
+          // Match paint() precision across server V8 and browser engines.
+          opacity={path.opacity.toFixed(3)}
           fill={
             path.kind === "glass" || path.kind === "shade"
               ? `url(#${prefix}-glass)`
