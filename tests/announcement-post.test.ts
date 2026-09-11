@@ -25,7 +25,7 @@ test("Hyperlight announcement replaces the rough article and retains its incomin
   if (post.format !== "md") return;
   assert.deepEqual(
     post.headings.map((heading) => heading.text),
-    ["The first projects"],
+    ["The first projects", "Project Directives"],
   );
   for (const project of ["vorpal", "hyperscale", "focal", "slates"]) {
     assert.ok(getProject(project), `unknown announcement project: ${project}`);
