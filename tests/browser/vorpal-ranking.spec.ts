@@ -366,11 +366,13 @@ test("ranking contribution ribbons remain attached to their output fins", async 
           )!;
           const points = vertices(fin);
           const end = vertices(path).at(-1)!;
-          // Portrait joins the upper contour at its 18/24 sample. Desktop
-          // enters between the leading upper/lower vertices of the open fin.
+          // Portrait joins 75% along the upper contour. Derive its vertex
+          // from the actual mesh resolution, not the previous 24 segments.
+          // Desktop enters between the leading upper/lower vertices.
+          const upperSegments = points.length / 2 - 1;
           const target =
             element.getAttribute("data-portrait") === "true"
-              ? points[18]
+              ? points[upperSegments * 0.75]
               : [
                   (points[0][0] + points.at(-1)![0]) / 2,
                   (points[0][1] + points.at(-1)![1]) / 2,

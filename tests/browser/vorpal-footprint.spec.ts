@@ -35,23 +35,48 @@ test("RAM and disk preserve their hardware proportions on narrow screens", async
     await page.setViewportSize({ width: 1440, height: 1000 });
     await selectMetric(figure, metric);
     const grid = figure.locator("[data-footprint-grid]");
-    const ratio = () => grid.evaluate((element) => {
-      const box = (element as SVGSVGElement).getBBox();
-      return box.width / box.height;
-    });
+    const ratio = () =>
+      grid.evaluate((element) => {
+        const box = (element as SVGSVGElement).getBBox();
+        return box.width / box.height;
+      });
     const desktopRatio = await ratio();
     for (const width of [768, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
-      await grid.evaluate(() => new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }));
+      await grid.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          }),
+      );
       await grid.screenshot({
-        path: testInfo.outputPath(`hardware-${metric.toLowerCase()}-${width}.png`),
+        path: testInfo.outputPath(
+          `hardware-${metric.toLowerCase()}-${width}.png`,
+        ),
       });
-      expect.soft(
-        await ratio(),
-        `${metric} at ${width}px should scale the hardware, not reshape it`,
-      ).toBeCloseTo(desktopRatio, 1);
+      expect
+        .soft(
+          await ratio(),
+          `${metric} at ${width}px should scale the hardware, not reshape it`,
+        )
+        .toBeCloseTo(desktopRatio, 1);
+      const bounds = await grid.evaluate((element) => {
+        const svg = element as SVGSVGElement;
+        const artwork = svg.getBBox();
+        const viewport = svg.viewBox.baseVal;
+        return {
+          left: artwork.x - viewport.x,
+          top: artwork.y - viewport.y,
+          right: viewport.x + viewport.width - artwork.x - artwork.width,
+          bottom: viewport.y + viewport.height - artwork.y - artwork.height,
+        };
+      });
+      for (const [edge, room] of Object.entries(bounds)) {
+        expect(
+          room,
+          `${metric} should not clip its ${edge} edge`,
+        ).toBeGreaterThanOrEqual(0);
+      }
     }
   }
   expect(errors).toEqual([]);
@@ -396,9 +421,15 @@ test("projected cells retain a twenty-five MB unit and attached partial fills", 
       }));
       const relativeWidth = sizing.width / sizing.available;
       if (sizing.available >= 750) {
-        expect(relativeWidth, "keep the 25% reduction in wide plots").toBeCloseTo(0.75, 2);
+        expect(
+          relativeWidth,
+          "keep the 25% reduction in wide plots",
+        ).toBeCloseTo(0.75, 2);
       } else if (sizing.available <= 460) {
-        expect(relativeWidth, "use the available width on small screens").toBeCloseTo(1, 2);
+        expect(
+          relativeWidth,
+          "use the available width on small screens",
+        ).toBeCloseTo(1, 2);
       } else {
         expect(relativeWidth).toBeGreaterThanOrEqual(0.75);
         expect(relativeWidth).toBeLessThanOrEqual(1);

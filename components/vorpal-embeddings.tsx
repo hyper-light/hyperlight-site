@@ -62,14 +62,26 @@ type Nodes = {
   portrait: boolean;
   surfaces: SVGPathElement[];
   edges: SVGPathElement[];
+  backs: SVGPathElement[];
+  walls: SVGPathElement[];
+  rims: SVGPathElement[];
+  ribs: SVGPathElement[];
+  etching: SVGPathElement[];
+  sheens: SVGPathElement[];
   lines: SVGPathElement[];
   cells: SVGCircleElement[];
   connections: SVGPathElement[];
   inputs: SVGPathElement[];
+  inputSkins: SVGPathElement[];
+  inputBacks: SVGPathElement[];
+  inputRibs: SVGPathElement[];
   words: SVGTextElement[];
   flows: SVGPathElement[];
   outgoing: SVGPathElement[];
   rings: SVGPathElement[];
+  outputSkins: SVGPathElement[];
+  outputRibs: SVGPathElement[];
+  outputSegments: SVGPathElement[];
   rays: SVGPathElement[];
   points: SVGCircleElement[];
   prism: SVGLinearGradientElement;
@@ -88,18 +100,30 @@ function nodesFor(svg: SVGSVGElement) {
       portrait: svg.dataset.portrait === "true",
       surfaces: paths("surface"),
       edges: paths("edge"),
+      backs: paths("back"),
+      walls: paths("wall"),
+      rims: paths("rim"),
+      ribs: paths("rib"),
+      etching: paths("etching"),
+      sheens: paths("sheen"),
       lines: paths("line"),
       cells: Array.from(
         svg.querySelectorAll<SVGCircleElement>("[data-embedding-cell]"),
       ),
       connections: paths("connection"),
       inputs: paths("input"),
+      inputSkins: paths("input-skin"),
+      inputBacks: paths("input-back"),
+      inputRibs: paths("input-rib"),
       words: Array.from(
         svg.querySelectorAll<SVGTextElement>("[data-embedding-word]"),
       ),
       flows: paths("flow"),
       outgoing: paths("outgoing"),
       rings: paths("ring"),
+      outputSkins: paths("output-skin"),
+      outputRibs: paths("output-rib"),
+      outputSegments: paths("output-segment"),
       rays: paths("ray"),
       points: Array.from(
         svg.querySelectorAll<SVGCircleElement>("[data-embedding-point]"),
@@ -121,6 +145,45 @@ function paint(svg: SVGSVGElement, nodes: Nodes, time: number) {
     elements.forEach((el, i) => el.setAttribute("d", paths[i % paths.length]));
   assign(nodes.surfaces, frame.surfaces);
   assign(nodes.edges, frame.surfaces);
+  frame.materials.forEach((material, index) => {
+    nodes.backs[index].setAttribute("d", material.back);
+    nodes.walls[index].setAttribute("d", material.wall);
+    nodes.rims[index].setAttribute("d", material.rim);
+    nodes.ribs[index].setAttribute("d", material.ribs);
+    nodes.etching[index].setAttribute("d", material.etching);
+    nodes.sheens[index].setAttribute("d", material.sheen);
+    const weight =
+      nodes.blend[0] * (index === 0 || index === 7 ? 1 : 0.12) +
+      nodes.blend[1] * ([2, 4, 7].includes(index) ? 1 : 0.4) +
+      nodes.blend[2] * (0.58 + index * 0.055);
+    nodes.backs[index].setAttribute(
+      "stroke-opacity",
+      (weight * 0.15).toFixed(3),
+    );
+    nodes.walls[index].setAttribute(
+      "fill-opacity",
+      (weight * 0.065).toFixed(3),
+    );
+    nodes.rims[index].setAttribute(
+      "stroke-opacity",
+      (weight * 0.36).toFixed(3),
+    );
+    nodes.ribs[index].setAttribute(
+      "stroke-opacity",
+      (weight * 0.32).toFixed(3),
+    );
+    nodes.etching[index].setAttribute(
+      "stroke-opacity",
+      (0.13 + nodes.blend[2] * 0.07).toFixed(3),
+    );
+    nodes.sheens[index].setAttribute(
+      "stroke-opacity",
+      (
+        weight *
+        (0.11 + 0.08 * Math.sin(time * 0.45 + index * 0.4) ** 2)
+      ).toFixed(3),
+    );
+  });
   assign(nodes.lines, frame.lines);
   assign(nodes.connections, frame.connections);
   nodes.flows.forEach((el, i) =>
@@ -130,14 +193,25 @@ function paint(svg: SVGSVGElement, nodes: Nodes, time: number) {
     el.setAttribute("d", frame.outgoing[Math.floor(i / 2)]),
   );
   assign(nodes.rings, frame.rings);
+  frame.outputMaterials.forEach((material, index) => {
+    nodes.outputSkins[index].setAttribute("d", material.skin);
+    nodes.outputRibs[index].setAttribute("d", material.ribs);
+  });
+  frame.outputSegments.forEach((segment, index) => {
+    nodes.outputSegments[index].setAttribute("d", segment.path);
+    nodes.outputSegments[index].setAttribute(
+      "stroke-opacity",
+      segment.light.toFixed(4),
+    );
+  });
   nodes.surfaces.forEach((el, i) =>
     el.setAttribute(
       "fill-opacity",
       (
-        nodes.blend[0] * (i === 7 ? 0.06 : 0.001) +
-        nodes.blend[1] * ([1, 3, 6].includes(i) ? 0.07 : 0.005) +
-        nodes.blend[2] * 0.06 +
-        Math.sin(time * 0.4 + i * 0.5) ** 2 * 0.015
+        nodes.blend[0] * (i === 7 ? 0.085 : 0.004) +
+        nodes.blend[1] * ([2, 4, 7].includes(i) ? 0.09 : 0.016) +
+        nodes.blend[2] * 0.075 +
+        Math.sin(time * 0.4 + i * 0.5) ** 2 * 0.012
       ).toFixed(3),
     ),
   );
@@ -145,8 +219,9 @@ function paint(svg: SVGSVGElement, nodes: Nodes, time: number) {
     el.setAttribute(
       "stroke-opacity",
       (
-        nodes.blend[0] * (i === 7 ? 0.45 : 0.015) +
-        (1 - nodes.blend[0]) * 0.22
+        nodes.blend[0] * (i === 0 || i === 7 ? 0.55 : 0.06) +
+        nodes.blend[1] * ([2, 4, 7].includes(i) ? 0.5 : 0.2) +
+        nodes.blend[2] * 0.37
       ).toFixed(3),
     ),
   );
@@ -154,8 +229,8 @@ function paint(svg: SVGSVGElement, nodes: Nodes, time: number) {
     el.setAttribute(
       "stroke-opacity",
       (
-        nodes.blend[0] * (i < 32 ? 0.12 : 0.015) +
-        (1 - nodes.blend[0]) * 0.16
+        nodes.blend[0] * (i < 32 ? 0.065 : 0.025) +
+        (1 - nodes.blend[0]) * 0.12
       ).toFixed(3),
     ),
   );
@@ -165,23 +240,29 @@ function paint(svg: SVGSVGElement, nodes: Nodes, time: number) {
     el.setAttribute("cy", p.y.toFixed(2));
     const hot = example.vector[i] !== 0;
     const intensity =
-      nodes.blend[0] * (hot ? 0.96 : 0.24) +
+      nodes.blend[0] * (hot ? 0.96 : 0.18) +
       (1 - nodes.blend[0]) *
         (0.35 + 0.45 * Math.sin(i * 0.37 - time * 0.8) ** 6);
     el.setAttribute("opacity", intensity.toFixed(3));
     el.setAttribute(
       "r",
-      (hot ? 2.8 : 1.3 + (1 - nodes.blend[0]) * 0.55).toFixed(2),
+      (
+        nodes.blend[0] * (hot ? 2.5 : 0.75) +
+        (1 - nodes.blend[0]) * 1.1
+      ).toFixed(2),
     );
   });
   nodes.connections.forEach((el) =>
     el.setAttribute(
       "opacity",
-      (0.025 + 0.12 * (1 - nodes.blend[0])).toFixed(3),
+      (0.004 + 0.15 * (1 - nodes.blend[0])).toFixed(3),
     ),
   );
   frame.inputs.forEach((item, i) => {
     nodes.inputs[i].setAttribute("d", item.body);
+    nodes.inputSkins[i].setAttribute("d", item.skin);
+    nodes.inputBacks[i].setAttribute("d", item.back);
+    nodes.inputRibs[i].setAttribute("d", item.ribs);
     nodes.words[i].setAttribute("x", item.x.toFixed(2));
     nodes.words[i].setAttribute("y", item.y.toFixed(2));
   });
@@ -275,12 +356,21 @@ function Scene({
       fill="none"
     >
       <defs>
-        <linearGradient id={id + "-glass"} x1="0" y1="0" x2="1" y2="1">
-          <stop stopColor="#c5d8e1" stopOpacity=".35" />
-          <stop offset=".28" stopColor="#81939f" stopOpacity=".08" />
-          <stop offset=".52" stopColor="#bfd0df" stopOpacity=".3" />
-          <stop offset=".71" stopColor="#314452" stopOpacity=".1" />
-          <stop offset="1" stopColor="#b7c4d0" stopOpacity=".26" />
+        <linearGradient
+          id={id + "-glass"}
+          gradientUnits="userSpaceOnUse"
+          x1={portrait ? 128 : 296}
+          y1="100"
+          x2={portrait ? 286 : 502}
+          y2="420"
+        >
+          <stop stopColor="#d9e3e9" stopOpacity=".7" />
+          <stop offset=".18" stopColor="#667784" stopOpacity=".1" />
+          <stop offset=".38" stopColor="#bbcbd9" stopOpacity=".45" />
+          <stop offset=".51" stopColor="#d9e0e9" stopOpacity=".85" />
+          <stop offset=".57" stopColor="#27323d" stopOpacity=".1" />
+          <stop offset=".81" stopColor="#8b9daf" stopOpacity=".26" />
+          <stop offset="1" stopColor="#d4dbe6" stopOpacity=".72" />
         </linearGradient>
         <linearGradient
           id={id + "-prism"}
@@ -312,17 +402,51 @@ function Scene({
       {frame.surfaces.map((d, i) => (
         <g key={i}>
           <path
+            data-embedding-back=""
+            d={frame.materials[i].back}
+            stroke="#a7bdcd"
+            strokeWidth=".65"
+            strokeOpacity={i === 0 || i === 7 ? 0.15 : 0.018}
+          />
+          <path
+            data-embedding-wall=""
+            d={frame.materials[i].wall}
+            fill={`url(#${id}-prism)`}
+            fillOpacity={i === 0 || i === 7 ? 0.065 : 0.008}
+          />
+          <path
             data-embedding-surface=""
             d={d}
             fill={`url(#${id}-glass)`}
-            fillOpacity={i === 7 ? 0.06 : 0.001}
+            fillOpacity={i === 7 ? 0.085 : 0.004}
           />
           <path
             data-embedding-edge=""
             d={d}
             stroke={`url(#${id}-prism)`}
             strokeWidth=".8"
-            strokeOpacity={i === 7 ? 0.45 : 0.015}
+            strokeOpacity={i === 0 || i === 7 ? 0.55 : 0.06}
+          />
+          <path
+            data-embedding-rim=""
+            d={frame.materials[i].rim}
+            stroke="#c0d0de"
+            strokeWidth=".55"
+            strokeOpacity={i === 0 || i === 7 ? 0.36 : 0.043}
+          />
+          <path
+            data-embedding-rib=""
+            d={frame.materials[i].ribs}
+            stroke={`url(#${id}-prism)`}
+            strokeWidth=".6"
+            strokeOpacity={i === 0 || i === 7 ? 0.32 : 0.038}
+          />
+          <path
+            data-embedding-sheen=""
+            d={frame.materials[i].sheen}
+            stroke={`url(#${id}-prism)`}
+            strokeWidth="1.3"
+            strokeOpacity={i === 0 || i === 7 ? 0.11 : 0.013}
           />
         </g>
       ))}
@@ -332,8 +456,18 @@ function Scene({
           data-embedding-line=""
           d={d}
           stroke="#a8bfce"
-          strokeOpacity=".12"
+          strokeOpacity={i < 32 ? 0.065 : 0.025}
           strokeWidth=".55"
+        />
+      ))}
+      {frame.materials.map((material, i) => (
+        <path
+          key={i}
+          data-embedding-etching=""
+          d={material.etching}
+          stroke="#b3c4d3"
+          strokeWidth=".5"
+          strokeOpacity=".13"
         />
       ))}
       {frame.connections.map((d, i) => (
@@ -342,7 +476,7 @@ function Scene({
           data-embedding-connection=""
           d={d}
           stroke={`url(#${id}-prism)`}
-          opacity=".025"
+          opacity=".004"
           strokeWidth=".7"
         />
       ))}
@@ -352,20 +486,47 @@ function Scene({
           data-embedding-cell={i}
           cx={p.x.toFixed(2)}
           cy={p.y.toFixed(2)}
-          r={example.vector[i] ? 2.8 : 1.3}
+          r={example.vector[i] ? 2.5 : 0.75}
           fill={`url(#${id}-prism)`}
-          opacity={example.vector[i] ? 0.96 : 0.24}
+          opacity={example.vector[i] ? 0.96 : 0.18}
         />
       ))}
       {opticalPath(frame.outgoing, "outgoing")}
+      {frame.outputMaterials.map((material, i) => (
+        <g key={i}>
+          <path
+            data-embedding-output-skin=""
+            d={material.skin}
+            fill={`url(#${id}-prism)`}
+            fillOpacity=".052"
+          />
+          <path
+            data-embedding-output-rib=""
+            d={material.ribs}
+            stroke="#c3d0de"
+            strokeWidth=".55"
+            strokeOpacity=".32"
+          />
+        </g>
+      ))}
       {frame.rings.map((d, i) => (
         <path
           key={i}
           data-embedding-ring=""
           d={d}
           stroke={`url(#${id}-prism)`}
-          strokeOpacity=".26"
-          strokeWidth=".65"
+          strokeOpacity=".07"
+          strokeWidth=".6"
+        />
+      ))}
+      {frame.outputSegments.map((segment, i) => (
+        <path
+          key={i}
+          data-embedding-output-segment=""
+          d={segment.path}
+          stroke={`url(#${id}-prism)`}
+          strokeWidth=".75"
+          strokeOpacity={segment.light.toFixed(4)}
         />
       ))}
       {frame.vectors.map((v, i) => (
@@ -389,6 +550,26 @@ function Scene({
       ))}
       {frame.inputs.map((item, i) => (
         <g key={i}>
+          <path
+            data-embedding-input-skin=""
+            d={item.skin}
+            fill={`url(#${id}-prism)`}
+            fillOpacity=".07"
+          />
+          <path
+            data-embedding-input-back=""
+            d={item.back}
+            stroke="#a8bdcb"
+            strokeWidth=".55"
+            strokeOpacity=".31"
+          />
+          <path
+            data-embedding-input-rib=""
+            d={item.ribs}
+            stroke={`url(#${id}-prism)`}
+            strokeWidth=".6"
+            strokeOpacity=".38"
+          />
           <path
             data-embedding-input=""
             d={item.body}

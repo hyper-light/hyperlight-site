@@ -15,6 +15,41 @@ function coordinates(path: string): [number, number][] {
   ]);
 }
 
+function renderedPaths(frame: ReturnType<typeof embeddingFrame>) {
+  return [
+    ...frame.surfaces,
+    ...frame.lines,
+    ...frame.connections,
+    ...frame.flows,
+    ...frame.outgoing,
+    ...frame.rings,
+    ...frame.materials.flatMap(
+      ({ front, back, wall, rim, ribs, etching, sheen }) => [
+        front,
+        back,
+        wall,
+        rim,
+        ribs,
+        etching,
+        sheen,
+      ],
+    ),
+    ...frame.inputs.flatMap(({ body, skin, back, ribs }) => [
+      body,
+      skin,
+      back,
+      ribs,
+    ]),
+    ...frame.outputMaterials.flatMap(({ spine, skin, ribs }) => [
+      spine,
+      skin,
+      ribs,
+    ]),
+    ...frame.outputSegments.map((segment) => segment.path),
+    ...frame.vectors.map((vector) => vector.ray),
+  ];
+}
+
 test("embedding strands stay joined to their token curves throughout motion and mode changes", () => {
   for (const portrait of [false, true]) {
     for (const blend of [
@@ -114,4 +149,106 @@ test("lexical example uses two signed hashes per token and has a unit-length out
     Math.abs(vector.reduce((sum, value) => sum + value * value, 0) - 1) < 1e-12,
   );
   assert.deepEqual(lexicalExample(), lexicalExample());
+});
+
+test("embedding materials have actual projected thickness and stay joined to their front faces", () => {
+  for (const portrait of [false, true]) {
+    for (const mode of EMBEDDING_MODES) {
+      const frame = embeddingFrame(3, modeBlend(mode), portrait);
+      assert.equal(frame.materials?.length, frame.surfaces.length);
+      for (const [index, material] of frame.materials.entries()) {
+        const front = coordinates(frame.surfaces[index]);
+        const back = coordinates(material.back);
+        assert.equal(front.length, back.length);
+        assert.ok(
+          front.some(
+            ([x, y], i) => Math.hypot(x - back[i][0], y - back[i][1]) > 1,
+          ),
+        );
+        const wall = coordinates(material.wall);
+        assert.deepEqual(wall.slice(0, front.length), front);
+        assert.deepEqual(wall.slice(front.length), back.toReversed());
+        assert.ok(material.etching.length > 0);
+        assert.ok(material.ribs.length > 0);
+      }
+    }
+  }
+});
+
+test("token ribbons and vector-shell details share the same surfaces as their connections", () => {
+  for (const portrait of [false, true]) {
+    for (const time of [0, 4, 19]) {
+      const frame = embeddingFrame(time, modeBlend("neural"), portrait);
+      for (const input of frame.inputs) {
+        const curve = coordinates(input.body);
+        const skin = coordinates(input.skin);
+        assert.deepEqual(skin.slice(0, curve.length), curve);
+        assert.ok(input.ribs.length > 0);
+      }
+      assert.equal(frame.outputMaterials?.length, 8);
+      for (const [index, material] of frame.outputMaterials.entries()) {
+        assert.equal(material.spine, frame.rings[9 + index]);
+        assert.ok(material.skin.length > 0);
+        assert.ok(material.ribs.length > 0);
+      }
+    }
+  }
+});
+
+test("all engraving and material paths keep their topology and fit both layouts throughout a motion cycle", () => {
+  const topology = (paths: string[]) =>
+    paths.map((value) => value.match(/[MLCQZ]/g)?.join(""));
+  for (const portrait of [false, true]) {
+    const initial = topology(
+      renderedPaths(embeddingFrame(0, [1, 0, 0], portrait)),
+    );
+    for (const blend of [
+      ...EMBEDDING_MODES.map(modeBlend),
+      [0.25, 0.5, 0.25] as [number, number, number],
+    ]) {
+      for (let time = 0; time <= 40; time += 2) {
+        const paths = renderedPaths(embeddingFrame(time, blend, portrait));
+        assert.deepEqual(topology(paths), initial);
+        for (const [x, y] of paths.flatMap(coordinates)) {
+          assert.ok(
+            x > 8 && x < (portrait ? 412 : 792),
+            `horizontal clipping at ${x}, t=${time}`,
+          );
+          assert.ok(
+            y > 30 && y < (portrait ? 618 : 460),
+            `vertical clipping at ${y}, t=${time}`,
+          );
+        }
+      }
+    }
+  }
+});
+
+test("material motion has no vertex or illumination jumps at successive sixty-Hz frames", () => {
+  for (const portrait of [false, true]) {
+    for (const mode of EMBEDDING_MODES) {
+      for (let time = 0; time <= 40; time += 4) {
+        const a = embeddingFrame(time, modeBlend(mode), portrait);
+        const b = embeddingFrame(time + 1 / 60, modeBlend(mode), portrait);
+        const before = renderedPaths(a).flatMap(coordinates);
+        const after = renderedPaths(b).flatMap(coordinates);
+        assert.equal(before.length, after.length);
+        for (let index = 0; index < before.length; index++) {
+          assert.ok(
+            Math.hypot(
+              before[index][0] - after[index][0],
+              before[index][1] - after[index][1],
+            ) < 1,
+          );
+        }
+        for (let index = 0; index < a.outputSegments.length; index++) {
+          assert.ok(
+            Math.abs(
+              a.outputSegments[index].light - b.outputSegments[index].light,
+            ) < 0.01,
+          );
+        }
+      }
+    }
+  }
 });

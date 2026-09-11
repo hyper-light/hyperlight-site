@@ -97,6 +97,74 @@
   stroke-width: 0.6;
   opacity: 0.17;
 }
+.bevel {
+  stroke: #c3d1dd;
+  stroke-width: 0.45;
+  stroke-opacity: 0.2;
+}
+.rib {
+  stroke: #afc3d3;
+  stroke-width: 0.5;
+  opacity: 0.24;
+}
+.sheen {
+  stroke: #dae4e9;
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  opacity: 0.4;
+}
+/* The open fusion chamber has a quiet rear shell and readable front edges.
+   Its small camera excursion never changes this stable painter/depth order. */
+.art [data-ranking-shape^="spindle-"][data-kind="rim"] {
+  opacity: 0.12;
+}
+.art [data-ranking-shape="spindle-0"][data-kind="rim"],
+.art [data-ranking-shape="spindle-4"][data-kind="rim"] {
+  opacity: 0.22;
+}
+.art [data-ranking-shape^="spindle-"][data-kind="wire"] {
+  opacity: 0.06;
+}
+.art [data-ranking-shape^="spindle-"][data-kind="bevel"] {
+  opacity: 0.45;
+}
+.art [data-ranking-shape^="spindle-thread-"][data-kind="wire"] {
+  opacity: 0.04;
+}
+.art [data-ranking-shape^="fusion-vane-"][data-kind="rim"] {
+  opacity: 0.4;
+}
+.art [data-ranking-shape^="fusion-vane-"][data-kind="wire"] {
+  opacity: 0.065;
+}
+.art [data-ranking-shape^="fusion-vane-"][data-kind="rib"] {
+  opacity: 0.09;
+}
+.art [data-ranking-shape^="fusion-vane-"][data-kind="glass"] {
+  stroke-opacity: 0.16;
+}
+.art
+  :is(
+    [data-ranking-shape^="fusion-vane-0"],
+    [data-ranking-shape^="fusion-vane-1"],
+    [data-ranking-shape^="fusion-vane-2"],
+    [data-ranking-shape^="fusion-vane-3"]
+  ) {
+  &[data-kind="rim"],
+  &[data-kind="sheen"] {
+    opacity: 0.075;
+  }
+  &[data-kind="glass"] {
+    opacity: 0.35;
+  }
+  &[data-kind="bevel"] {
+    opacity: 0.25;
+  }
+  &[data-kind="rib"],
+  &[data-kind="wire"] {
+    opacity: 0.035;
+  }
+}
 .slot {
   stroke: none;
 }

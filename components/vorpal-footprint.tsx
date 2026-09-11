@@ -813,7 +813,8 @@ export function VorpalFootprint() {
         </span>
         <span className={styles.note}>
           Encoder files add 274 MB (f16) or 547 MB (f32) on disk, shared across
-          repositories. <a href={footprintSource}>Memory and storage results</a>.
+          repositories. <a href={footprintSource}>Memory and storage results</a>
+          .
         </span>
       </figcaption>
     </figure>

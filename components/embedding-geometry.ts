@@ -35,16 +35,21 @@ function project(
   portrait: boolean,
   center?: V3,
 ): Point {
-  const yaw = -0.32 + Math.sin(time * 0.21) * 0.13;
-  const pitch = -0.18 + Math.sin(time * 0.17) * 0.07;
+  const yaw = -0.5 + Math.sin(time * 0.21) * 0.17;
+  const pitch = -0.27 + Math.sin(time * 0.17) * 0.1;
   const rx = x * Math.cos(yaw) + z * Math.sin(yaw);
   const rz = -x * Math.sin(yaw) + z * Math.cos(yaw);
   const ry = y * Math.cos(pitch) - rz * Math.sin(pitch);
   const depth = y * Math.sin(pitch) + rz * Math.cos(pitch);
+  const roll = -0.075 + Math.sin(time * 0.19) * 0.025;
   const scale = ((portrait ? 0.8 : 1) * 1100) / (1100 - depth);
   return {
-    x: (center?.[0] ?? (portrait ? 210 : 400)) + rx * scale,
-    y: (center?.[1] ?? (portrait ? 300 : 250)) + ry * scale,
+    x:
+      (center?.[0] ?? (portrait ? 210 : 400)) +
+      (rx * Math.cos(roll) - ry * Math.sin(roll)) * scale,
+    y:
+      (center?.[1] ?? (portrait ? 300 : 250)) +
+      (rx * Math.sin(roll) + ry * Math.cos(roll)) * scale,
     depth,
   };
 }
@@ -60,47 +65,150 @@ function surfacePoint(
   const depth = layer - 3.5;
   const ripple = Math.sin(u * 2.4 + v * 1.8 + time * 0.58);
   const lexical: V3 = [
-    u * 86,
-    v * 99,
-    depth * 0.8 + (u * u - v * v) * 27 + ripple * 6,
+    u * 94,
+    v * 104,
+    depth * 3.6 + u * u * 10 - v * v * 15 + ripple * 2.8,
   ];
   const factor = layer < 3 ? 0 : layer < 5 ? 1 : 2;
   const learned: V3 = [
-    [-58, 0, 58][factor] + u * [37, 17, 37][factor],
-    v * [83, 62, 83][factor] + depth * 2,
-    [18, 52, -22][factor] + depth * 4 + Math.sin(u * 2 + time * 0.36) * 14,
+    [-66, -2, 67][factor] + u * [42, 13, 37][factor],
+    v * [102, 73, 102][factor] + Math.sin(time * 0.36 + factor * 0.7) * 4,
+    [-28, 20, 44][factor] +
+      depth * 5 +
+      Math.sin(u * 1.8 + time * 0.36) * 10 +
+      v * v * 5,
   ];
   const neural: V3 = [
-    u * 62 + depth * 12,
-    v * 85 + Math.sin(u * 2 + time * 0.42 + layer * 0.3) * 11,
-    depth * 21 + Math.cos(v * 2.2 + time * 0.35) * 16,
+    u * 61 + depth * 13,
+    v * 89 + Math.sin(u * 2 + time * 0.42 + layer * 0.3) * 7,
+    depth * 18 + Math.cos(v * 2.2 + time * 0.35) * 12 + Math.sin(u * 2.6) * 7,
   ];
   return mix([lexical, learned, neural], blend);
 }
 
-function sheet(layer: number, time: number, blend: Blend, portrait: boolean) {
-  const points: Point[] = [];
+function perimeter(inset = 0): [number, number][] {
+  const points: [number, number][] = [];
+  const limit = 1 - inset;
   for (let edge = 0; edge < 4; edge++) {
     for (let i = 0; i < 16; i++) {
-      const t = -1 + (i * 2) / 15;
+      const t = (-1 + (i * 2) / 15) * limit;
       const [u, v] = [
-        [t, -1],
-        [1, t],
-        [-t, 1],
-        [-1, -t],
+        [t, -limit],
+        [limit, t],
+        [-t, limit],
+        [-limit, -t],
       ][edge];
-      points.push(
-        project(surfacePoint(layer, u, v, time, blend), time, portrait),
-      );
+      points.push([u, v]);
     }
   }
-  return path(points, true);
+  return points;
+}
+
+function material(
+  layer: number,
+  time: number,
+  blend: Blend,
+  portrait: boolean,
+) {
+  const point = (u: number, v: number, depth = 0) => {
+    const p = surfacePoint(layer, u, v, time, blend);
+    return project([p[0], p[1], p[2] + depth], time, portrait);
+  };
+  // Two real surfaces, joined at their common perimeter, make the thin glass
+  // readable as a volume. They do not depend on stroke tricks or SVG offsets.
+  const outer = perimeter();
+  const front = outer.map(([u, v]) => point(u, v));
+  const back = outer.map(([u, v]) => point(u, v, -4.5));
+  const inset = perimeter(0.055).map(([u, v]) => point(u, v, 0.5));
+  const ribs = outer
+    .filter((_, i) => i % 4 === 0)
+    .map(([u, v]) => path([point(u, v), point(u, v, -4.5)]))
+    .join("");
+  // Small open facets have a common local surface: the etched cell corners,
+  // visible bucket centres and highlighted routes cannot drift apart.
+  const etching = Array.from({ length: 32 }, (_, i) => {
+    const index = layer * 32 + i;
+    const location = cellSurface(index, time, blend);
+    const center = location.center;
+    const du = location.across;
+    const dv = location.down;
+    const corner = (x: number, y: number) =>
+      project(
+        [
+          center[0] + du[0] * x + dv[0] * y,
+          center[1] + du[1] * x + dv[1] * y,
+          center[2] + du[2] * x + dv[2] * y,
+        ],
+        time,
+        portrait,
+      );
+    return path(
+      [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)],
+      true,
+    );
+  }).join("");
+  // This travelling reflection is evaluated on the same surface, including
+  // its curvature. Its fixed sample count gives mode transitions no seams.
+  const sheen = Array.from({ length: 25 }, (_, index) => {
+    const v = -0.92 + (index / 24) * 1.84;
+    const u = Math.sin(time * 0.42 + layer * 0.24 + v * 0.4) * 0.8;
+    return point(u, v, 0.6);
+  });
+  return {
+    front: path(front, true),
+    back: path(back, true),
+    wall: path([...front, ...back.toReversed()], true),
+    rim: path(inset, true),
+    ribs,
+    etching,
+    sheen: path(sheen),
+  };
+}
+
+function cellSurface(index: number, time: number, blend: Blend) {
+  const row = Math.floor(index / 16),
+    column = index % 16;
+  const locations = [
+    { layer: 7, u: (column - 7.5) / 8, v: (row - 7.5) / 8 },
+    {
+      layer: Math.floor(column / 2),
+      u: ((column % 2) - 0.5) * 0.9,
+      v: (row - 7.5) / 8,
+    },
+    {
+      layer: column % 8,
+      u: (Math.floor(column / 8) - 0.5) * 1.2,
+      v: (row - 7.5) / 8,
+    },
+  ];
+  const sample = (du = 0, dv = 0) =>
+    mix(
+      locations.map((location, mode) =>
+        surfacePoint(
+          location.layer,
+          location.u + du,
+          location.v + dv,
+          time,
+          modeBlend(EMBEDDING_MODES[mode]),
+        ),
+      ),
+      blend,
+    );
+  const center = sample();
+  const u = sample(0.038, 0),
+    v = sample(0, 0.038);
+  return {
+    center,
+    across: u.map((value, axis) => value - center[axis]) as V3,
+    down: v.map((value, axis) => value - center[axis]) as V3,
+  };
 }
 
 export function embeddingFrame(time: number, blend: Blend, portrait = false) {
-  const surfaces = Array.from({ length: 8 }, (_, i) =>
-    sheet(i, time, blend, portrait),
+  const materials = Array.from({ length: 8 }, (_, i) =>
+    material(i, time, blend, portrait),
   );
+  const surfaces = materials.map((item) => item.front);
   const lines = Array.from({ length: 48 }, (_, i) => {
     const layer = Math.floor(i / 6);
     const row = i % 6;
@@ -133,25 +241,14 @@ export function embeddingFrame(time: number, blend: Blend, portrait = false) {
       }),
     );
   });
-  const cells = Array.from({ length: 256 }, (_, i) => {
-    const row = Math.floor(i / 16),
-      column = i % 16;
-    const u = (column - 7.5) / 8,
-      v = (row - 7.5) / 8;
-    const lexical = surfacePoint(7, u, v, time, [1, 0, 0]);
-    const learned = surfacePoint(Math.floor(column / 2), u, v, time, [0, 1, 0]);
-    const neural = surfacePoint(
-      column % 8,
-      (Math.floor(column / 8) - 0.5) * 1.2 + Math.sin(row * 1.9) * 0.2,
-      v,
-      time,
-      [0, 0, 1],
-    );
-    return project(mix([lexical, learned, neural], blend), time, portrait);
-  });
+  const cells = Array.from({ length: 256 }, (_, i) =>
+    project(cellSurface(i, time, blend).center, time, portrait),
+  );
   const connections = Array.from({ length: 64 }, (_, i) => {
-    const a = cells[(i * 17) % 256],
-      b = cells[(i * 17 + 37) % 256];
+    const row = (i % 8) * 2,
+      layer = Math.floor(i / 8);
+    const a = cells[row * 16 + layer],
+      b = cells[((row + 2) % 16) * 16 + ((layer + 1) % 8) + 8];
     return `M${fmt(a.x)},${fmt(a.y)}Q${fmt((a.x + b.x) / 2 + Math.sin(time * 0.4 + i) * 7)},${fmt((a.y + b.y) / 2 - 9)} ${fmt(b.x)},${fmt(b.y)}`;
   });
   const inputs = ["resolve", "import", "path"].map((word, i) => {
@@ -167,6 +264,9 @@ export function embeddingFrame(time: number, blend: Blend, portrait = false) {
       ];
     });
     const projected = points.map((p) => project(p, time, portrait, center));
+    const lower = points.map(([x, y, z]) =>
+      project([x, y + 4.2, z - 3], time, portrait, center),
+    );
     const outlet = projected[projected.length - 1];
     const previous = projected[projected.length - 2];
     const dx = outlet.x - previous.x;
@@ -177,6 +277,12 @@ export function embeddingFrame(time: number, blend: Blend, portrait = false) {
       x: center[0],
       y: center[1],
       body: path(projected),
+      skin: path([...projected, ...lower.toReversed()], true),
+      back: path(lower),
+      ribs: projected
+        .filter((_, index) => index % 4 === 0)
+        .map((point, index) => path([point, lower[index * 4]]))
+        .join(""),
       outlet,
       tangent: { x: dx / length, y: dy / length },
     };
@@ -199,30 +305,60 @@ export function embeddingFrame(time: number, blend: Blend, portrait = false) {
   });
   const outputCenter: V3 = portrait ? [210, 552, 0] : [662, 250, 0];
   const outputRadius = portrait ? 66 : 83;
-  const rings = Array.from({ length: 9 }, (_, ring) =>
-    path(
-      Array.from({ length: 65 }, (_, i) => {
-        const theta = (i / 64) * TAU;
-        const spin = time * 0.16;
-        const latitude = -0.65 + ring * 0.325;
-        const phi = ((ring - 5) / 4) * Math.PI + spin;
-        const radius =
-          outputRadius * Math.sqrt(Math.max(0, 1 - latitude * latitude));
-        const p: V3 =
-          ring < 5
-            ? [
-                radius * Math.cos(theta + spin),
-                latitude * outputRadius,
-                radius * Math.sin(theta + spin),
-              ]
-            : [
-                Math.sin(theta) * Math.cos(phi) * outputRadius,
-                Math.cos(theta) * outputRadius,
-                Math.sin(theta) * Math.sin(phi) * outputRadius,
-              ];
-        return project(p, time, portrait, outputCenter);
-      }),
-    ),
+  const globePoint = (ring: number, i: number, band = 0) => {
+    const theta = (i / 64) * TAU;
+    const spin = time * 0.16;
+    const latitude = -0.8 + ring * 0.2;
+    const phi = ((ring - 9) / 8) * Math.PI + spin + band;
+    const radius =
+      outputRadius * Math.sqrt(Math.max(0, 1 - latitude * latitude));
+    const p: V3 =
+      ring < 9
+        ? [
+            radius * Math.cos(theta + spin),
+            latitude * outputRadius,
+            radius * Math.sin(theta + spin),
+          ]
+        : [
+            Math.sin(theta) * Math.cos(phi) * outputRadius,
+            Math.cos(theta) * outputRadius,
+            Math.sin(theta) * Math.sin(phi) * outputRadius,
+          ];
+    return project(p, time, portrait, outputCenter);
+  };
+  const ringPoints = Array.from({ length: 17 }, (_, ring) =>
+    Array.from({ length: 65 }, (_, i) => globePoint(ring, i)),
+  );
+  const rings = ringPoints.map((points) => path(points));
+  // A single unit sphere, not a cluster of independently moving circles.
+  // Fine meridian ribbons have two boundaries on that same sphere, and each
+  // quarter receives continuous depth-dependent lighting without clipping.
+  const outputMaterials = Array.from({ length: 8 }, (_, index) => {
+    const left = Array.from({ length: 65 }, (_, i) =>
+      globePoint(index + 9, i, -0.022),
+    );
+    const right = Array.from({ length: 65 }, (_, i) =>
+      globePoint(index + 9, i, 0.022),
+    );
+    return {
+      spine: rings[index + 9],
+      skin: path([...left, ...right.toReversed()], true),
+      ribs: left
+        .filter((_, i) => i % 4 === 0)
+        .map((point, i) => path([point, right[i * 4]]))
+        .join(""),
+    };
+  });
+  const outputSegments = ringPoints.flatMap((points) =>
+    Array.from({ length: 4 }, (_, quarter) => {
+      const segment = points.slice(quarter * 16, quarter * 16 + 17);
+      const depth =
+        segment.reduce((sum, point) => sum + point.depth, 0) / segment.length;
+      return {
+        path: path(segment),
+        light: Number((0.12 + (depth / outputRadius + 1) * 0.2).toFixed(4)),
+      };
+    }),
   );
   const vectors = Array.from({ length: 18 }, (_, i) => {
     const theta = i * 2.39996 + time * 0.13;
@@ -265,12 +401,15 @@ export function embeddingFrame(time: number, blend: Blend, portrait = false) {
   });
   return {
     surfaces,
+    materials,
     lines,
     cells,
     connections,
     inputs,
     flows,
     rings,
+    outputMaterials,
+    outputSegments,
     vectors,
     outgoing,
   };

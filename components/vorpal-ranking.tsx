@@ -4,6 +4,12 @@ import { useId, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { useMotionPreference } from "@/components/motion-provider";
 import { useStudyMotion } from "@/components/studies/use-study-motion";
+import {
+  fusionDetails,
+  rankLeafDetails,
+  rankLeafPoint,
+  type RankingDetail,
+} from "./vorpal-ranking-geometry";
 import articleTabs from "./article-tabs.module.css";
 import styles from "./vorpal-ranking.module.css";
 
@@ -28,7 +34,7 @@ type Point = readonly [number, number, number];
 type Shape = {
   id: string;
   d: string;
-  kind: "glass" | "wire" | "slot" | "contribution" | "result" | "rim";
+  kind: RankingDetail["kind"] | "slot" | "contribution" | "result";
   candidate?: CandidateId;
 };
 type Label = {
@@ -76,7 +82,6 @@ function scene(time: number, portrait = false): Scene {
       Math.sin(time * 0.52 + index * 0.65) * 4,
     z: Math.sin(time * 0.39 + index * 0.7) * 8,
   }));
-  const fusionBreath = 1 + Math.sin(time * 0.62) * 0.055;
   const path = (points: Point[], closed = false) =>
     points
       .map((point, index) => {
@@ -109,8 +114,7 @@ function scene(time: number, portrait = false): Scene {
     });
   };
 
-  // Open optical fins: a curved skin and two free edges, with no rectangular
-  // end caps. The raised middle and twisting edge give each leaf real depth.
+  // The front surface is also the exact attachment point for each flow.
   const finPoint = (
     center: Point,
     halfWidth: number,
@@ -118,19 +122,8 @@ function scene(time: number, portrait = false): Scene {
     phase: number,
     u: number,
     side: number,
-  ): Point => {
-    const arch = Math.sin(u * Math.PI);
-    const twist = Math.sin(time * 0.43 + phase) * 0.3;
-    return [
-      center[0] - halfWidth + u * halfWidth * 2,
-      center[1] -
-        arch * (3 + Math.sin(phase + time * 0.4) * 1.5) +
-        side * halfHeight * (1 - u * 0.68),
-      center[2] +
-        arch * (23 + Math.sin(time * 0.37 + phase) * 7) +
-        side * arch * (8 + twist * 8),
-    ];
-  };
+  ): Point =>
+    rankLeafPoint(time, center, halfWidth, halfHeight, phase, u, side);
   const fin = (
     id: string,
     center: Point,
@@ -141,15 +134,27 @@ function scene(time: number, portrait = false): Scene {
     candidate?: CandidateId,
   ) => {
     const contour = (side: number) =>
-      Array.from({ length: 25 }, (_, index) =>
-        finPoint(center, halfWidth, halfHeight, phase, index / 24, side),
+      Array.from({ length: 17 }, (_, index) =>
+        finPoint(center, halfWidth, halfHeight, phase, index / 16, side),
       );
     const upper = contour(-1);
     const lower = contour(1);
     add(id, [...upper, ...lower.slice().reverse()], kind, true, candidate);
-    add(`${id}-edge`, upper, "rim", false, candidate);
-    add(`${id}-depth`, lower, "wire", false, candidate);
-    add(`${id}-grain`, contour(0.18), "wire", false, candidate);
+    for (const detail of rankLeafDetails(
+      time,
+      center,
+      halfWidth,
+      halfHeight,
+      phase,
+    )) {
+      add(
+        `${id}-${detail.id}`,
+        detail.points,
+        detail.kind,
+        detail.closed,
+        candidate,
+      );
+    }
   };
 
   // The three sheets are continuous surfaces, with a shallow moving twist.
@@ -206,15 +211,31 @@ function scene(time: number, portrait = false): Scene {
       "glass",
       true,
     );
+    // The rear edge is a second surface, not a detached decorative contour.
+    const rear = strip(-1).map(([x, y, z]): Point => [x, y + 0.4, z - 3]);
+    add(`sheet-${channelIndex}-rear`, rear, "wire");
+    add(
+      `sheet-${channelIndex}-bevel`,
+      [...strip(-1), ...rear.slice().reverse()],
+      "bevel",
+      true,
+    );
+    add(
+      `sheet-${channelIndex}-reflection`,
+      Array.from({ length: 29 }, (_, i) =>
+        ribbonPoint(0.035 + (i / 28) * 0.93, -0.91),
+      ),
+      "sheen",
+    );
     [-1, 0, 1].forEach((across, index) =>
       add(`grain-${channelIndex}-${index}`, strip(across), "wire"),
     );
     // Fine transverse ribs reveal the sheet's curvature without a box/grid UI.
-    [0.22, 0.52, 0.8].forEach((u, index) =>
+    [0.09, 0.19, 0.3, 0.42, 0.55, 0.69, 0.82, 0.93].forEach((u, index) =>
       add(
         `rib-${channelIndex}-${index}`,
         [-1, -0.5, 0, 0.5, 1].map((across) => ribbonPoint(u, across)),
-        "wire",
+        "rib",
       ),
     );
     label(
@@ -301,32 +322,8 @@ function scene(time: number, portrait = false): Scene {
     }
   });
 
-  // A light, open spindle: transparent membranes, not an opaque fusion box.
-  for (let ring = 0; ring < 5; ring++) {
-    const x = 38 + ring * 20;
-    const radius = (51 + Math.sin((ring / 4) * Math.PI) * 25) * fusionBreath;
-    const points = Array.from({ length: 65 }, (_, index): Point => {
-      const angle = (index / 64) * Math.PI * 2;
-      return portrait
-        ? [Math.cos(angle) * radius, 12 + ring * 20, Math.sin(angle) * radius]
-        : [x, Math.cos(angle) * radius, Math.sin(angle) * radius];
-    });
-    add(`spindle-${ring}`, points, ring === 2 ? "glass" : "rim", true);
-  }
-  for (let thread = 0; thread < 4; thread++) {
-    const angle = (thread * Math.PI) / 2;
-    add(
-      `spindle-thread-${thread}`,
-      Array.from({ length: 25 }, (_, index): Point => {
-        const u = index / 24;
-        const radius = (51 + Math.sin(u * Math.PI) * 25) * fusionBreath;
-        return portrait
-          ? [Math.cos(angle) * radius, 12 + u * 80, Math.sin(angle) * radius]
-          : [38 + u * 80, Math.cos(angle) * radius, Math.sin(angle) * radius];
-      }),
-      "wire",
-    );
-  }
+  for (const detail of fusionDetails(time, portrait))
+    add(detail.id, detail.points, detail.kind, detail.closed);
   label(
     "fusion",
     portrait ? [0, 125, 0] : [78, 116, 0],
@@ -472,16 +469,16 @@ function RankingArt({
           x2=".8"
           y2="1"
         >
-          <stop stopColor="#acc9d5" stopOpacity=".04" />
-          <stop offset=".35" stopColor="#b9d1df" stopOpacity=".2" />
-          <stop offset=".48" stopColor="#d3e1eb" stopOpacity=".32" />
-          <stop offset=".59" stopColor="#849eb7" stopOpacity=".055" />
-          <stop offset="1" stopColor="#b9b7d2" stopOpacity=".13" />
+          <stop stopColor="#acc9d5" stopOpacity=".025" />
+          <stop offset=".35" stopColor="#b9d1df" stopOpacity=".09" />
+          <stop offset=".48" stopColor="#d3e1eb" stopOpacity=".23" />
+          <stop offset=".59" stopColor="#849eb7" stopOpacity=".035" />
+          <stop offset="1" stopColor="#b9b7d2" stopOpacity=".075" />
         </linearGradient>
         <linearGradient id={id + "-glass"} x1="0" y1="0" x2=".8" y2="1">
-          <stop stopColor="#c5d2e2" stopOpacity=".09" />
-          <stop offset=".46" stopColor="#657c98" stopOpacity=".015" />
-          <stop offset="1" stopColor="#b5c3d9" stopOpacity=".07" />
+          <stop stopColor="#c5d2e2" stopOpacity=".055" />
+          <stop offset=".46" stopColor="#657c98" stopOpacity=".012" />
+          <stop offset="1" stopColor="#b5c3d9" stopOpacity=".045" />
         </linearGradient>
         <linearGradient
           id={id + "-prism"}
@@ -518,14 +515,19 @@ function RankingArt({
           d={shape.d}
           className={styles[shape.kind]}
           fill={
-            shape.kind === "slot" || shape.kind === "result"
+            shape.kind === "slot" ||
+            shape.kind === "result" ||
+            shape.kind === "bevel"
               ? `url(#${id}-fin)`
               : shape.kind === "glass"
                 ? `url(#${id}-glass)`
                 : "none"
           }
           stroke={
-            shape.candidate || shape.kind === "rim"
+            (shape.candidate &&
+              shape.kind !== "sheen" &&
+              shape.kind !== "rib") ||
+            shape.kind === "rim"
               ? `url(#${id}-prism)`
               : undefined
           }
