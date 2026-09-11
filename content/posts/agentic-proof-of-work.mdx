@@ -326,13 +326,11 @@ State-range movement is implemented, but current voters and extra holders still 
 
 Custody currently verifies the placement's required copies; independently checking those copies against its promised failure domains remains unfinished. These limits matter when selecting the failures a deployment can actually tolerate. [Custody qualification.][custody-limits]
 
-## Apply it to your workflow
+## Conclusion
 
-Start with a task you already delegate to an agent. Decide what would make the result acceptable before work begins, then retain the exact artifacts and the evaluations that name them. Give a fresh agent access to the claim, closing testament, and evidence. Can it tell what was accepted, why, and what still needs work without reading the original conversation?
+Claims, testaments, artifacts, and validators compose to form a powerful system that allows multiple agents to achieve better user alignment and quality work while maintaining agentic independence and dynamism. The proposed protocol and architecture here likewise allow for easy distribution and deployment, whether on a single laptop or in datacenters across the world.
 
-Then test what happens when a participant or machine disappears. In a test deployment, interrupt an agent or restart a replica. Check that the next participant can recover the outstanding obligations and retrieve the evidence behind accepted work. As you add hosts or regions, choose the failures the deployment must tolerate and test those guarantees.
-
-That gives teams a way to carry longer-running work across agents, machines, and regions while keeping its requirements and evidence intact. The next agent can build on a checked result instead of starting another investigation into what happened. Delegation should leave you with work you can use—and the evidence to judge it.
+Stay tuned for further updates and announcements as we work to develop, refine, and implement the protocol.
 
 [ledger]: https://github.com/hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md
 [peer]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md
