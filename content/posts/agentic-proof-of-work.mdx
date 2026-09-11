@@ -7,11 +7,11 @@ featured: true
 draft: false
 ---
 
-An agent fixes a parser bug and runs the tests. They pass. During review, it spots a cleaner way to handle the input and changes the patch. The maintainer approves that version. The agent reports that the fix is tested and reviewed.
+An agent fixes a parser bug and runs the tests. They pass. During review, it spots a cleaner way to handle the input and changes the patch. Another "maintainer" agent approves that version. The agent reports that the fix is tested and reviewed.
 
 Except the tests ran against the first patch. The review covered the second. Neither version has both checks.
 
-The maintainer can catch this by reading the conversation and comparing revisions. With several agents working at once, reconstructing what happened becomes another job before any result can be accepted. A summary that says “done” doesn't identify which version passed which check.
+The maintainer agent can catch this by reading the conversation and comparing revisions. With several agents working at once, reconstructing what happened becomes another job before any result can be accepted. A summary that says “done” doesn't identify which version passed which check.
 
 A shared ledger keeps that record. The maintainer posts a claim describing the fix and its acceptance requirements. The parser agent reads the claim from the ledger, takes responsibility, and publishes its artifacts and closing testament there. The maintainer reads those records, checks the exact work, and submits its verdicts to the ledger. The ledger records acceptance when the declared requirements are met.
 
@@ -21,7 +21,7 @@ That ledger is the **agentic proof of work**: the authoritative record of what w
 
 A Unicode escape needs four hexadecimal digits, but the parser accepts `"\u12"`. The fix must reject that incomplete escape while preserving valid strings.
 
-“Fix the parser” leaves the agent to guess how much to change and the maintainer to guess what to accept. A **claim** makes that agreement explicit. It has a claimant who issues it, a respondent responsible for the work, a scope, and the validations that define acceptance.
+“Fix the parser” leaves the agent to guess how much to change and the maintainer agent to guess what to accept. A **claim** makes that agreement explicit. It has a claimant who issues it, a respondent responsible for the work, a scope, and the validations that define acceptance.
 
 For this fix, an abbreviated claim could read:
 
@@ -55,7 +55,7 @@ The claim fixes who evaluates each requirement and which validator definition th
 
 <WorkOrder />
 
-A generated claim is stored in the ledger but isn't actionable. The maintainer posts it to make it available to the parser agent. The parser agent acquires an execution receipt through the ledger, recording its responsibility for the work. The maintainer can prepare several claims and post them as the work is ready to begin.
+A generated claim is stored in the ledger but isn't actionable. The maintainer agent posts it to make it available to the parser agent. The parser agent acquires an execution receipt through the ledger, recording its responsibility for the work. The maintainer can prepare several claims and post them as the work is ready to begin.
 
 The parser agent can now record that it found the faulty branch or wrote a regression test. These progress updates leave C17 open, waiting for its evidence and required checks. [Claim transitions.][claim-states]
 
@@ -69,7 +69,7 @@ The digest covers more than the visible file bytes: the artifact's kind and sche
 
 The digest lets the maintainer verify the artifact it reads from the ledger. Testing and review establish whether that patch meets the requirements.
 
-An artifact can be visible in the ledger before the agent finishes the rest of its work. The maintainer can read a useful diagnostic while the parser agent is still preparing the patch, then record its artifact receipt in the ledger. Acceptance is evaluated separately.
+An artifact can be visible in the ledger before the agent finishes the rest of its work. The maintainer agent can read a useful diagnostic while the parser agent is still preparing the patch, then record its artifact receipt in the ledger. Acceptance is evaluated separately.
 
 ## Closing Testaments
 
@@ -92,7 +92,7 @@ Here, `A` and `hA` stand for a particular artifact and its content digest.
 
 <EvidenceCassette />
 
-“Complete” is the respondent's reported outcome, accompanied by its assessment of confidence. Acceptance still requires the maintainer to record receipt of the posted testament and submit passing results for the required checks. The ledger can then mark C17 `Satisfied`.
+“Complete” is the respondent's reported outcome, accompanied by its assessment of confidence. Acceptance still requires the maintainer agent to record receipt of the posted testament and submit passing results for the required checks. The ledger can then mark C17 `Satisfied`.
 
 These receipts have different meanings:
 
@@ -135,7 +135,7 @@ The designated evaluator reads the evaluation context from the ledger and record
 
 The validator contract pins its identity and version, input and result schemas, target, evaluator, and any declared instructions or quality bar. It also bounds execution attempts and deadlines. These requirements stay fixed wherever the participant runs the check. [Participant execution and validator contracts.][validator-contract]
 
-For C17, the maintainer is both claimant and evaluator. It runs the agreed cases against the patch and reviews that same patch for boundary errors, submitting each result with its evidence to the ledger. Both requirements must pass, and they can run concurrently.
+For C17, the maintainer agent is both claimant and evaluator. It runs the agreed cases against the patch and reviews that same patch for boundary errors, submitting each result with its evidence to the ledger. Both requirements must pass, and they can run concurrently.
 
 One requirement can also have two ordered phases. For a research assignment, a programmatic check might confirm that the report contains the requested comparison and citation fields. After that passes, an agentic evaluator judges whether the cited sources support the conclusions. Unsupported conclusions fail that quality check even when the report's structure is valid.
 
@@ -161,7 +161,7 @@ The same division applies to other work. A research report can have a citation o
 
 ## Validation Outcomes
 
-The parser agent has published its patch in the ledger, but the maintainer can't start its test runner because a dependency is unavailable. This is an evaluation **Error**: the diagnostic explains why the maintainer couldn't establish whether the patch met the requirement.
+The parser agent has published its patch in the ledger, but the maintainer agent can't start its test runner because a dependency is unavailable. This is an evaluation **Error**: the diagnostic explains why the maintainer couldn't establish whether the patch met the requirement.
 
 If the runner starts and the malformed escape is still accepted, that's **Fail**: the present work doesn't meet its requirement. If the required patch is absent from the closed response, that's **Incomplete**: there's no target to evaluate.
 
@@ -175,7 +175,7 @@ The evidence identifies where the problem occurred. The respondent's diagnostic 
 
 A patch can reject incomplete escapes while introducing an unchecked read elsewhere. The maintainer submits that failing review to the ledger, which marks C17 failed. The review result, failed patch, and closing testament remain recorded, explaining why the fix wasn't accepted.
 
-The maintainer posts a successor claim, C18, in the ledger, naming the failed work to correct. The parser agent reads C18 and publishes a new patch under that claim. C17 retains its failure, including the first patch and the review that rejected it, after C18 succeeds.
+The maintainer agent posts a successor claim, C18, in the ledger, naming the failed work to correct. The parser agent reads C18 and publishes a new patch under that claim. C17 retains its failure, including the first patch and the review that rejected it, after C18 succeeds.
 
 <RecordReader />
 
@@ -242,7 +242,7 @@ Updates spanning ranges become visible together at one session sequence. A paren
 
 ## Ledger Replication
 
-When the maintainer submits C18's passing review, the session leader checks the request and puts the resulting mutation in order. Voting replicas persist that record. The operation commits when a quorum has durably retained it, and a normal reply waits until the complete state change is visible.
+When the maintainer agent submits C18's passing review, the session leader checks the request and puts the resulting mutation in order. Voting replicas persist that record. The operation commits when a quorum has durably retained it, and a normal reply waits until the complete state change is visible.
 
 A single-server deployment still flushes its required writes before acknowledging them. Replication adds surviving copies and quorum agreement. A replica whose disk write fails can't contribute the acknowledgment needed to commit. [Durable commit rules][durable-commit] and [failure tests.][quorum-tests]
 
@@ -260,7 +260,7 @@ The stronger placement has a cost: committed writes wait for persistence across 
 
 ## Evidence Custody
 
-C18's ledger record identifies the accepted patch. The patch's bytes also need to survive. A readable history with an unavailable artifact would leave the next maintainer unable to inspect or apply the correction.
+C18's ledger record identifies the accepted patch. The patch's bytes also need to survive. A readable history with an unavailable artifact would leave the next maintainer agent unable to inspect or apply the correction.
 
 The content store seals the immutable object, and every required content copy verifies the complete bytes before reporting them durable. A custody receipt binds that fact to the content, the copy, and the current placement. Beginning an artifact evaluation is refused while required copies are missing.
 
