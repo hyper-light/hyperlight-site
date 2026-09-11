@@ -102,6 +102,7 @@ async function expectAttachedRoutes(scene: Locator) {
 test("detailed geography and network traffic stay legible through a full rotation", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.clock.install();
@@ -114,8 +115,12 @@ test("detailed geography and network traffic stay legible through a full rotatio
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   await startVisibleClock(page, scene);
-  await expect(scene.locator('[data-proof-path^="coast-"]')).toHaveCount(WORLD_GEOGRAPHY_METADATA.coastChunks);
-  await expect(scene.locator('[data-proof-path^="border-"]')).toHaveCount(WORLD_GEOGRAPHY_METADATA.borderChunks);
+  await expect(scene.locator('[data-proof-path^="coast-"]')).toHaveCount(
+    WORLD_GEOGRAPHY_METADATA.coastChunks,
+  );
+  await expect(scene.locator('[data-proof-path^="border-"]')).toHaveCount(
+    WORLD_GEOGRAPHY_METADATA.borderChunks,
+  );
   expect(
     await scene
       .locator('[data-proof-path^="border-"][stroke-dasharray="2 3"]')

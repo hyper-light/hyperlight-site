@@ -489,3 +489,101 @@ test("replication delivers its complete outbound batch before acknowledging back
           );
       }
 });
+
+test("residency rejects Region C at the gate without destination arrivals or acknowledgements", () => {
+  const localTraffic =
+    /^local-2-[0-3]-(request|response)(-trail)?$|^local-2-[0-3]-(hub|site)-arrival$/;
+  for (const portrait of [false, true]) {
+    let attempts = 0,
+      gatePulses = 0;
+    for (let step = 0; step <= 14; step++) {
+      const frame = ledgerPlacementFrame(step * 0.7, 2, portrait);
+      assert.equal(path(frame, "replication-ack-2").opacity, 0);
+      assert.equal(path(frame, "replication-ack-trail-2").opacity, 0);
+      for (const item of frame.paths.filter(({ id }) => localTraffic.test(id)))
+        assert.equal(
+          item.opacity,
+          0,
+          `${item.id}: disallowed local traffic remains silent`,
+        );
+      for (const [index, id] of [
+        "packet-2",
+        "replication-packet-2-1",
+        "replication-packet-2-2",
+      ].entries()) {
+        if (path(frame, id).opacity <= 0.01) continue;
+        attempts++;
+        assert.equal(path(frame, id).tone, "fail");
+        assert.ok(
+          attachedCarrier(
+            frame,
+            "replication-route-2",
+            id,
+            `replication-trail-2-${index}`,
+          ) <= 0.535,
+          "Rejected packets cannot proceed beyond the residency gate",
+        );
+      }
+      const pulse = path(frame, "replication-arrival-2");
+      if (pulse.opacity > 0.01) {
+        gatePulses++;
+        assert.equal(
+          pulse.tone,
+          "fail",
+          "A gate rejection must not resemble a successful receipt",
+        );
+        const position = ringCenter(frame, pulse.id);
+        const onRoute = routePosition(frame, "replication-route-2", position);
+        assert.ok(onRoute.distance < 0.45);
+        assert.ok(
+          onRoute.fraction > 0.525 && onRoute.fraction < 0.535,
+          "The allowed rejection pulse is at the gate, not Region C",
+        );
+        assert.ok(
+          distance(position, hub(frame, 2)) > 20,
+          "No destination arrival is shown for the disallowed replica",
+        );
+      }
+    }
+    assert.ok(
+      attempts > 0 && gatePulses > 0,
+      "Residency rejection is visible, not a silently missing route",
+    );
+    assert.ok(
+      path(ledgerPlacementFrame(3.71, 2, portrait), "replication-ack-1")
+        .opacity > 0.05,
+      "An allowed Region B acknowledgement remains active",
+    );
+  }
+});
+
+test("integrated local clients and request-response trails remain attached to their rotating geographic hubs", () => {
+  const activeRegions = new Set<number>();
+  for (const portrait of [false, true])
+    for (const time of [1, 3.5, 6, 8.5, 23.5, 46]) {
+      const frame = ledgerPlacementFrame(time, 1, portrait);
+      for (let region = 0; region < 3; region++)
+        for (let site = 0; site < 4; site++) {
+          const prefix = `local-${region}-${site}`;
+          const route = `${prefix}-route`;
+          assert.ok(
+            distance(points(frame, route).at(-1)!, hub(frame, region)) < 0.015,
+            `${route} terminates at the existing hub, not a separate authority`,
+          );
+          assert.ok(
+            distance(
+              points(frame, route)[0],
+              ringCenter(frame, `${prefix}-core`),
+            ) < 0.025,
+            `${route} starts at its geographic client`,
+          );
+          for (const direction of ["request", "response"]) {
+            const packet = `${prefix}-${direction}`;
+            if (path(frame, packet).opacity <= 0.01) continue;
+            activeRegions.add(region);
+            attachedCarrier(frame, route, packet, `${packet}-trail`);
+          }
+        }
+    }
+  assert.deepEqual([...activeRegions].sort(), [0, 1, 2]);
+});
