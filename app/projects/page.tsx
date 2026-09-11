@@ -5,7 +5,7 @@ import { projects } from "@/lib/projects";
 export const metadata: Metadata = {
   title: "Projects",
   description:
-    "Tools for understanding code, coordinating agents, and building systems. Explore what’s available and what’s taking shape at Hyperlight.",
+    "Tools for understanding code, coordinating agents, and building systems. Explore what’s available and what’s to come at Hyperlight.",
   alternates: { canonical: "/projects" },
 };
 
@@ -14,7 +14,7 @@ export default function ProjectsPage() {
     <main id="main" className="container subpage">
       <div className="page-intro">
         <span className="eyebrow">
-          <span className="spectrum-rule" /> The Hyperlight projects
+          <span className="spectrum-rule" /> The stage is set
         </span>
         <h1>
           Built for the next
@@ -30,8 +30,7 @@ export default function ProjectsPage() {
       <div className="catalog-note">
         <span className="spectral-dot" />
         <p>
-          Different stages. One direction. Follow the repositories for the
-          latest work.
+          One ecosystem, open and free forever.
         </p>
       </div>
     </main>

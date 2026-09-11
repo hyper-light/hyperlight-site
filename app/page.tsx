@@ -107,10 +107,10 @@ export default function Home() {
             <div>
               <span>03</span>
               <div>
-                <h3>Show your work.</h3>
+                <h3>Keep it human.</h3>
                 <p>
                   Clear boundaries, inspectable evidence, honest documentation.
-                  Knowing what a tool can’t do matters, too.
+                  All projects are MIT open source, forever.
                 </p>
               </div>
             </div>
