@@ -10,6 +10,8 @@ import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
 import type { Element, Root, RootContent } from "hast";
+import { getArticleVisual, type ArticleBlock } from "./article-visuals";
+import { compilePostMdx } from "./post-mdx";
 
 export type PostSummary = {
   slug: string;
@@ -23,15 +25,27 @@ export type PostSummary = {
 };
 
 export type PostHeading = { id: string; text: string; level: number };
-export type Post = PostSummary & { html: string; headings: PostHeading[] };
+export type Post = PostSummary & {
+  headings: PostHeading[];
+} & (
+    | { format: "md"; html: string; blocks: ArticleBlock[] }
+    | { format: "mdx"; code: string }
+  );
 
 export type PostOptions = {
+  /** Trusted local content only; this is a fixture seam, not a remote-content API. */
   directory?: string;
   /** Publication is evaluated by UTC calendar date. */
   now?: Date;
 };
 
-type SourcePost = { summary: PostSummary; content: string; draft: boolean };
+type SourcePost = {
+  summary: PostSummary;
+  content: string;
+  draft: boolean;
+  format: "md" | "mdx";
+  filename: string;
+};
 const safeSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function validSlug(value: string): boolean {
@@ -93,11 +107,12 @@ function calendarDate(
 }
 
 function readSource(directory: string, filename: string): SourcePost {
-  const slug = filename.slice(0, -3);
+  const extension = path.extname(filename);
+  const slug = filename.slice(0, -extension.length);
   if (!validSlug(slug)) {
     invalid(
       filename,
-      "use a lowercase kebab-case filename of at most 100 characters before .md.",
+      "use a lowercase kebab-case filename of at most 100 characters before .md or .mdx.",
     );
   }
 
@@ -150,6 +165,8 @@ function readSource(directory: string, filename: string): SourcePost {
     },
     draft: booleanField(data, "draft", filename),
     content: parsed.content,
+    format: extension === ".mdx" ? "mdx" : "md",
+    filename,
   };
 }
 
@@ -168,12 +185,21 @@ function publishedSources(options: PostOptions = {}): SourcePost[] {
     throw error;
   }
 
+  const seen = new Set<string>();
   return entries
-    .filter((entry) => entry.name.endsWith(".md"))
+    .filter((entry) => /\.mdx?$/.test(entry.name))
     .map((entry) => {
       if (!entry.isFile())
-        invalid(entry.name, "posts must be regular Markdown files.");
-      return readSource(directory, entry.name);
+        invalid(entry.name, "posts must be regular Markdown or MDX files.");
+      const post = readSource(directory, entry.name);
+      if (seen.has(post.summary.slug)) {
+        invalid(
+          entry.name,
+          "duplicate slug: keep only one .md or .mdx file per slug.",
+        );
+      }
+      seen.add(post.summary.slug);
+      return post;
     })
     .filter(({ summary, draft }) => !draft && summary.date <= today)
     .sort(
@@ -211,6 +237,78 @@ function textContent(node: RootContent): string {
   return "children" in node ? node.children.map(textContent).join("") : "";
 }
 
+/** Shared by Markdown and MDX so highlighting, links, and the TOC agree. */
+export function preparePostTree(tree: Root, headings: PostHeading[]): void {
+  const identifiers = new Set<string>();
+  visitElements(tree, (node) => {
+    // Code scrolls directly; tables use a separate keyboard-accessible wrapper.
+    if (node.tagName === "pre") node.properties.tabIndex = 0;
+    if (typeof node.properties.id === "string")
+      identifiers.add(node.properties.id);
+    if (
+      /^h[1-6]$/.test(node.tagName) &&
+      typeof node.properties.id === "string"
+    ) {
+      headings.push({
+        id: node.properties.id,
+        text: textContent(node),
+        level: Number(node.tagName[1]),
+      });
+    }
+  });
+  visitElements(tree, (node) => {
+    const href = node.properties.href;
+    if (
+      node.tagName !== "a" ||
+      typeof href !== "string" ||
+      !href.startsWith("#")
+    )
+      return;
+    let target: string;
+    try {
+      target = decodeURIComponent(href.slice(1));
+    } catch {
+      return;
+    }
+    if (!identifiers.has(target) && identifiers.has(`heading-${target}`)) {
+      node.properties.href = `#heading-${target}`;
+    }
+  });
+  wrapPostTables(tree);
+}
+
+/** Keep native table layout at full width, with overflow on its container. */
+function wrapPostTables(node: Root | RootContent): void {
+  if (!("children" in node)) return;
+  if (node.type === "element" && node.properties.dataArticleTable !== undefined)
+    return;
+  node.children = node.children.map((child) => {
+    if (child.type === "element" && child.tagName === "table") {
+      const headers: string[] = [];
+      visitElements(child, (element) => {
+        if (element.tagName === "th") headers.push(textContent(element));
+      });
+      delete child.properties.tabIndex;
+      return {
+        type: "element",
+        tagName: "div",
+        properties: {
+          className: ["article-table-scroll"],
+          dataArticleTable: "",
+          tabIndex: 0,
+          role: "region",
+          ariaLabel: headers.length
+            ? `Table: ${headers.join(", ")}`
+            : "Article table",
+        },
+        children: [child],
+      } satisfies Element;
+    }
+    wrapPostTables(child);
+    return child;
+  });
+}
+
 const sanitizeSchema: typeof defaultSchema = {
   ...defaultSchema,
   // Source HTML is discarded by remark-rehype. The only IDs are generated by
@@ -235,6 +333,17 @@ export async function getPost(
   if (!source) return undefined;
 
   const headings: PostHeading[] = [];
+  if (source.format === "mdx") {
+    const code = await compilePostMdx(
+      source.content,
+      source.filename,
+      (tree) => {
+        preparePostTree(tree, headings);
+      },
+    );
+    return { ...source.summary, format: "mdx", code, headings };
+  }
+  const blocks: ArticleBlock[] = [];
   const result = await unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -243,44 +352,55 @@ export async function getPost(
     .use(rehypeHighlight, { detect: false, ignoreMissing: true })
     .use(rehypeSanitize, sanitizeSchema)
     .use(() => (tree: Root) => {
-      const identifiers = new Set<string>();
-      visitElements(tree, (node) => {
-        if (typeof node.properties.id === "string")
-          identifiers.add(node.properties.id);
-        if (
-          /^h[1-6]$/.test(node.tagName) &&
-          typeof node.properties.id === "string"
-        ) {
-          headings.push({
-            id: node.properties.id,
-            text: textContent(node),
-            level: Number(node.tagName[1]),
+      preparePostTree(tree, headings);
+
+      // Split only top-level, standalone, allowlisted images after sanitization.
+      // Markdown remains portable: the complete HTML retains the static SVG.
+      let section: RootContent[] = [];
+      const flush = () => {
+        if (!section.length) return;
+        blocks.push({
+          kind: "html",
+          html: unified()
+            .use(rehypeStringify)
+            .stringify({ type: "root", children: section }),
+        });
+        section = [];
+      };
+      for (const node of tree.children) {
+        const image =
+          node.type === "element" &&
+          node.tagName === "p" &&
+          node.children.length === 1
+            ? node.children[0]
+            : undefined;
+        const visual =
+          image?.type === "element" && image.tagName === "img"
+            ? getArticleVisual(image.properties.src)
+            : undefined;
+        if (visual && image?.type === "element") {
+          flush();
+          blocks.push({
+            kind: "visual",
+            visual,
+            alt: String(image.properties.alt ?? ""),
           });
+        } else {
+          section.push(node);
         }
-      });
-      visitElements(tree, (node) => {
-        const href = node.properties.href;
-        if (
-          node.tagName !== "a" ||
-          typeof href !== "string" ||
-          !href.startsWith("#")
-        )
-          return;
-        let target: string;
-        try {
-          target = decodeURIComponent(href.slice(1));
-        } catch {
-          return;
-        }
-        if (!identifiers.has(target) && identifiers.has(`heading-${target}`)) {
-          node.properties.href = `#heading-${target}`;
-        }
-      });
+      }
+      flush();
     })
     .use(rehypeStringify)
     .process(source.content);
 
-  return { ...source.summary, html: String(result), headings };
+  return {
+    ...source.summary,
+    format: "md",
+    html: String(result),
+    headings,
+    blocks,
+  };
 }
 
 export function formatDate(date: string): string {

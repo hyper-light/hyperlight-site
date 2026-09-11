@@ -3,9 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { formatDate, getPost, getPosts, getPostsByProject } from "../lib/posts";
+import { runPostMdx } from "../lib/post-mdx";
 import { validateSiteUrl } from "../lib/site";
 import { createPost } from "../scripts/new-post";
+import { getArticleVisual } from "../lib/article-visuals";
+import { canonicalPostSlug } from "../lib/post-redirects";
 
 const now = new Date("2026-09-10T12:00:00Z");
 
@@ -164,10 +169,16 @@ test("rendering sanitizes HTML and unsafe URLs while preserving code, tables, an
 
   const post = await getPost("rendering", posts);
   assert.ok(post);
+  assert.equal(post.format, "md");
+  if (post.format !== "md") return;
   assert.doesNotMatch(post.html, /<script|<iframe|onerror|javascript:/);
   assert.match(post.html, /class="hljs language-typescript"/);
   assert.match(post.html, /class="hljs-keyword"/);
-  assert.match(post.html, /<table>/);
+  assert.match(post.html, /<pre tabindex="0">/);
+  assert.match(
+    post.html,
+    /class="article-table-scroll"[^>]*tabindex="0"[^>]*role="region"[^>]*><table>/,
+  );
   assert.match(post.html, /id="heading-location"/);
   assert.match(post.html, /href="#heading-hello-world"/);
   assert.match(post.html, /href="#heading-hello-world-1"/);
@@ -204,6 +215,22 @@ test("post creation defaults to drafts and never overwrites existing files", (t)
   assert.throws(() => createPost("   ", posts), /Provide a title/);
 });
 
+test("MDX drafts can be created without colliding with Markdown slugs", (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write("new-idea.md");
+  const mdx = createPost("New idea", { ...posts, format: "mdx" });
+  assert.equal(mdx.slug, "new-idea-2");
+  assert.equal(path.extname(mdx.filePath), ".mdx");
+  assert.match(fs.readFileSync(mdx.filePath, "utf8"), /draft: true/);
+  const markdown = createPost("New idea", posts);
+  assert.equal(markdown.slug, "new-idea-3");
+  assert.deepEqual(
+    getPosts(posts).map((post) => post.slug),
+    ["new-idea"],
+  );
+});
+
 test("canonical configuration only accepts a secure origin or local development URL", () => {
   assert.equal(
     validateSiteUrl("https://hyperlight.example/"),
@@ -224,4 +251,260 @@ test("canonical configuration only accepts a secure origin or local development 
   ]) {
     assert.throws(() => validateSiteUrl(value), /NEXT_PUBLIC_SITE_URL/);
   }
+});
+
+test("article figures use only standalone allowlisted Markdown images and preserve static HTML", async (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write(
+    "illustrated.md",
+    "",
+    [
+      "## Before",
+      "[After](#after)",
+      "![Files → graph & queries](/illustrations/vorpal-architecture.svg)",
+      "## After",
+      "![Unknown](/illustrations/unregistered.svg)",
+      "Inline ![Not a figure](/illustrations/vorpal-architecture.svg) text.",
+      "[![Linked image](/illustrations/vorpal-architecture.svg)](https://example.com)",
+      '<script>alert("bad")</script>',
+    ].join("\n\n"),
+  );
+  const post = await getPost("illustrated", posts);
+  assert.ok(post);
+  assert.equal(post.format, "md");
+  if (post.format !== "md") return;
+  assert.deepEqual(
+    post.blocks.map((block) => block.kind),
+    ["html", "visual", "html"],
+  );
+  assert.deepEqual(post.blocks[1], {
+    kind: "visual",
+    visual: "vorpal-architecture",
+    alt: "Files → graph & queries",
+  });
+  assert.match(
+    post.html,
+    /<img src="\/illustrations\/vorpal-architecture.svg"/,
+  );
+  assert.match(
+    post.blocks[0].kind === "html" ? post.blocks[0].html : "",
+    /href="#heading-after"/,
+  );
+  const ending = post.blocks[2];
+  assert.equal(ending.kind, "html");
+  if (ending.kind !== "html") return;
+  assert.match(ending.html, /id="heading-after"/);
+  assert.match(ending.html, /unregistered.svg/);
+  assert.match(ending.html, /Inline <img/);
+  assert.doesNotMatch(ending.html, /<script/);
+  for (const invalid of [
+    "__proto__",
+    "constructor",
+    "toString",
+    null,
+    "/illustrations/vorpal-architecture.svg?x",
+    "https://example.com/illustrations/vorpal-architecture.svg",
+  ]) {
+    assert.equal(getArticleVisual(invalid), undefined);
+  }
+});
+
+test("ordinary posts keep their sanitized HTML unchanged in a single block", async (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write(
+    "ordinary.md",
+    "",
+    "## Heading\n\nA paragraph.\n\n```sh\nvorpal index .\n```",
+  );
+  const post = await getPost("ordinary", posts);
+  assert.ok(post);
+  assert.equal(post.format, "md");
+  if (post.format !== "md") return;
+  assert.deepEqual(post.blocks, [{ kind: "html", html: post.html }]);
+});
+
+test("Introducing Vorpal replaces the old listing and preserves its incoming URL mapping", async () => {
+  assert.equal(
+    canonicalPostSlug("a-codebase-is-more-than-text"),
+    "introducing-vorpal",
+  );
+  assert.equal(canonicalPostSlug("introducing-vorpal"), "introducing-vorpal");
+  assert.equal(canonicalPostSlug("constructor"), "constructor");
+  const posts = getPosts({ now });
+  assert.ok(posts.some((post) => post.slug === "introducing-vorpal"));
+  assert.ok(
+    !posts.some((post) => post.slug === "a-codebase-is-more-than-text"),
+  );
+  const post = await getPost("introducing-vorpal", { now });
+  assert.ok(post);
+  assert.equal(post.title, "Introducing Vorpal");
+  assert.equal(post.project, "vorpal");
+  assert.equal(post.format, "mdx");
+  if (post.format !== "mdx") return;
+  const { default: Content } = await runPostMdx(post.code);
+  const html = renderToStaticMarkup(
+    createElement(Content, {
+      components: {
+        VorpalArchitecture: ({ description }: { description: string }) =>
+          createElement("figure", { "data-architecture": true }, description),
+        VorpalBenchmarks: () =>
+          createElement("figure", { "data-benchmarks": true }),
+        VorpalEmbeddings: () =>
+          createElement("figure", { "data-embeddings": true }),
+        VorpalRanking: () => createElement("figure", { "data-ranking": true }),
+        VorpalComparisons: ({ kind }: { kind: string }) =>
+          createElement("figure", { "data-comparisons": kind }),
+        VorpalFootprint: () =>
+          createElement("figure", { "data-footprint": true }),
+        VorpalTgrep: () => createElement("figure", { "data-tgrep": true }),
+      },
+    }),
+  );
+  assert.match(html, /releases\/latest\/download\/vorpal-macos-arm64/);
+  assert.doesNotMatch(html, /npm install/);
+  assert.equal((html.match(/data-architecture=/g) ?? []).length, 1);
+  assert.match(html, /data-comparisons="agents"/);
+  assert.match(html, /data-comparisons="retrieval"/);
+  assert.equal((html.match(/data-footprint=/g) ?? []).length, 1);
+  assert.equal((html.match(/data-tgrep=/g) ?? []).length, 1);
+  assert.match(html, /--selector call_expression/);
+  assert.match(html, /296 s/);
+  assert.match(html, /NDCG@10/);
+  assert.doesNotMatch(html, /\b(envelope|substrate)\b/i);
+  for (const match of html.matchAll(/href="#([^"]+)"/g)) {
+    assert.ok(html.includes(`id="${match[1]}"`));
+  }
+});
+
+test("MDX renders real React components and expressions while retaining Markdown features", async (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write(
+    "react-article.mdx",
+    "project: vorpal\n",
+    [
+      "## A useful heading",
+      "[Jump](#a-useful-heading) and [Second](#a-useful-heading-1).",
+      '<VorpalArchitecture description="Parse → resolve → query" />',
+      "The result is **{6 * 7}**.",
+      "## A useful heading",
+      "```typescript\nconst answer = 42;\n```",
+      "| Tool | Result |\n| --- | --- |\n| Vorpal | Found |",
+      "A footnote.[^one]\n\n[^one]: Further detail.",
+      "![An ordinary image](/illustrations/vorpal-architecture.svg)",
+    ].join("\n\n"),
+  );
+  const post = await getPost("react-article", posts);
+  assert.ok(post);
+  assert.equal(post.format, "mdx");
+  if (post.format !== "mdx") return;
+  const { default: Content } = await runPostMdx(post.code);
+  let componentCalls = 0;
+  const html = renderToStaticMarkup(
+    createElement(Content, {
+      components: {
+        VorpalArchitecture: ({ description }: { description: string }) => {
+          componentCalls++;
+          return createElement(
+            "figure",
+            { "data-react-component": true },
+            description,
+          );
+        },
+      },
+    }),
+  );
+  assert.equal(componentCalls, 1);
+  assert.match(
+    html,
+    /<figure data-react-component="true">Parse → resolve → query<\/figure>/,
+  );
+  assert.match(html, /<strong>42<\/strong>/);
+  assert.match(html, /<pre tabindex="0">/);
+  assert.match(html, /class="hljs-keyword"/);
+  assert.match(
+    html,
+    /class="article-table-scroll"[^>]*tabindex="0"[^>]*role="region"[^>]*><table>/,
+  );
+  assert.match(html, /<img src="\/illustrations\/vorpal-architecture.svg"/);
+  assert.deepEqual(post.headings.slice(0, 2), [
+    { id: "heading-a-useful-heading", text: "A useful heading", level: 2 },
+    { id: "heading-a-useful-heading-1", text: "A useful heading", level: 2 },
+  ]);
+  for (const match of html.matchAll(/href="#([^"]+)"/g)) {
+    assert.ok(
+      html.includes(`id="${match[1]}"`),
+      `Missing destination for ${match[1]}`,
+    );
+  }
+});
+
+test("Markdown and MDX share publication rules, project links, and slug validation", async (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write("ordinary.md", "project: vorpal\n");
+  posts.write("interactive.mdx", "project: vorpal\n");
+  posts.write("draft.mdx", "draft: true\n", "<Invalid unfinished MDX");
+  posts.write("future.mdx");
+  const future = path.join(posts.directory, "future.mdx");
+  fs.writeFileSync(
+    future,
+    fs.readFileSync(future, "utf8").replace("2026-09-09", "2026-09-11"),
+  );
+  assert.deepEqual(
+    getPostsByProject("vorpal", posts).map((post) => post.slug),
+    ["interactive", "ordinary"],
+  );
+  assert.equal(await getPost("draft", posts), undefined);
+  assert.equal(await getPost("future", posts), undefined);
+  assert.equal(await getPost("../interactive", posts), undefined);
+  posts.write("bad.mdx", "slug: other\n");
+  assert.throws(() => getPosts(posts), /bad\.mdx.*slug.*match the filename/);
+});
+
+test("duplicate Markdown and MDX slugs fail even if one file is a draft", (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  posts.write("same.md");
+  posts.write("same.mdx", "draft: true\n");
+  assert.throws(() => getPosts(posts), /same\.(md|mdx).*duplicate slug/);
+});
+
+test("MDX is restricted to local regular post files, with clear compile and component errors", async (t) => {
+  const posts = fixture();
+  t.after(posts.cleanup);
+  for (const content of [
+    'import Example from "https://example.com/remote.js"\n\n<Example />',
+    'export const title = "Not frontmatter"',
+  ]) {
+    posts.write("imports.mdx", "", content);
+    await assert.rejects(
+      getPost("imports", posts),
+      /imports\.mdx.*cannot contain imports or exports/,
+    );
+  }
+  fs.unlinkSync(path.join(posts.directory, "imports.mdx"));
+  posts.write("invalid.mdx", "", "<Unclosed>");
+  await assert.rejects(
+    getPost("invalid", posts),
+    /Invalid post "invalid\.mdx"/,
+  );
+  posts.write("invalid.mdx", "", "<UnregisteredComponent />");
+  const post = await getPost("invalid", posts);
+  assert.ok(post?.format === "mdx");
+  const { default: Content } = await runPostMdx(post.code);
+  assert.throws(
+    () => renderToStaticMarkup(createElement(Content)),
+    /UnregisteredComponent/,
+  );
+  fs.symlinkSync(
+    path.join(posts.directory, "invalid.mdx"),
+    path.join(posts.directory, "linked.mdx"),
+  );
+  assert.throws(
+    () => getPosts(posts),
+    /linked\.mdx.*regular Markdown or MDX files/,
+  );
 });

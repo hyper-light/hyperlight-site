@@ -1,0 +1,80 @@
+/* One selector treatment for every interactive article figure. */
+.tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  width: 100%;
+  border-top: 1px solid #222a33;
+  border-bottom: 1px solid #222a33;
+}
+.tabs > button {
+  position: relative;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #a6afbd;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
+}
+.tabs > button:hover {
+  background: #10151c;
+  color: #e2e9f1;
+}
+.tabs > button:is([aria-selected="true"], [aria-pressed="true"]) {
+  background: #121820;
+  color: #e2e9f1;
+}
+.tabs > button:is([aria-selected="true"], [aria-pressed="true"])::after {
+  position: absolute;
+  right: 20%;
+  bottom: 0;
+  left: 20%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    #a4cec2,
+    #a4b0d6,
+    #c3a5cf,
+    #d2bda2,
+    #a4cec2
+  );
+  background-size: 250% 100%;
+  animation: chroma 6s ease-in-out infinite alternate;
+  content: "";
+}
+.tabs > button:focus-visible {
+  outline: 2px solid #bfd0e4;
+  outline-offset: -4px;
+}
+@keyframes chroma {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+@container (max-width: 560px) {
+  .tabs > button {
+    padding: 12px 6px;
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabs > button {
+    transition: none;
+  }
+  .tabs > button:is([aria-selected="true"], [aria-pressed="true"])::after {
+    animation: none;
+  }
+}

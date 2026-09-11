@@ -2,7 +2,7 @@
 
 Infrastructure for agents and humans, any scale, any place.
 
-The Hyperlight project site and blog, built with Next.js, TypeScript, Tailwind CSS, Radix UI, and Markdown. The design keeps the page quiet and uses a little prismatic color where it counts.
+The Hyperlight project site and blog, built with Next.js, TypeScript, Tailwind CSS, Radix UI, Markdown, and MDX. The design keeps the page quiet and uses a little prismatic color where it counts.
 
 ## Run locally
 
@@ -27,11 +27,13 @@ npm start
 
 ```sh
 npm run post -- "A better way to build"
+# For a post with embedded React components:
+npm run post -- --mdx "How Vorpal works"
 ```
 
 This creates a draft in `content/posts/`. Existing posts are never overwritten; repeated titles get a numbered filename. Open the new file and replace its placeholder description and body. Set `draft: false` when it is ready.
 
-Posts are ordinary `.md` files with YAML frontmatter:
+Posts are `.md` or `.mdx` files with the same YAML frontmatter:
 
 ```markdown
 ---
@@ -53,11 +55,35 @@ Write Markdown here, including links, lists, tables, and fenced code blocks.
 
 `title`, `description`, `date`, and `category` are required. The date must be a real calendar date in `YYYY-MM-DD` format. `project` is optional and connects the post to a project slug from `lib/projects.ts`. `featured` and `draft` are optional booleans that default to `false`.
 
-The filename becomes the URL slug: `a-better-way-to-build.md` appears at `/blog/a-better-way-to-build`. Use lowercase words separated by hyphens. Frontmatter does not need a `slug` field; if present, it must match the filename.
+The filename becomes the URL slug: `a-better-way-to-build.md` or `a-better-way-to-build.mdx` appears at `/blog/a-better-way-to-build`. Use lowercase words separated by hyphens. Frontmatter does not need a `slug` field; if present, it must match the filename. Keep only one file per slug: duplicate `.md`/`.mdx` names fail validation, including drafts. Renaming an existing post from `.md` to `.mdx` does not change its URL.
 
 Drafts and future-dated posts are excluded from listings and public article routes. Dates use UTC. The site reads posts when it builds, so publish a new build when a scheduled date arrives. Invalid metadata fails with the offending filename, including in drafts.
 
-Markdown supports GitHub-style tables, task lists, strikethrough, footnotes, and syntax highlighting. Give fenced code blocks a language, such as `typescript` or `rust`. Section links such as `[Details](#the-details)` work, including repeated headings. Raw HTML is discarded, unsafe links are stripped, and posts do not execute JSX or JavaScript frontmatter.
+Both formats support GitHub-style tables, task lists, strikethrough, footnotes, and syntax highlighting. Give fenced code blocks a language, such as `typescript` or `rust`. Use Markdown headings for the table of contents. Section links such as `[Details](#the-details)` work, including repeated headings. Frontmatter is always YAML; JavaScript frontmatter is rejected.
+
+Tables fill the article column. Wide tables scroll inside a keyboard-accessible wrapper, without widening the page.
+
+### Embed a React component
+
+In an `.mdx` post, use a registered component directly between paragraphs:
+
+```mdx
+## How indexing works
+
+Vorpal parses source files and resolves links across the repository.
+
+<VorpalArchitecture description="Files become a graph and search indexes, queried through the CLI or MCP." />
+
+The graph is updated when files change.
+```
+
+The registry is `components/article-components.tsx`. To add a reusable figure, create its React component, import it there, and add its name to `articleComponents`. No import is needed in the article; post-level imports and exports are rejected. Interactive components can use `"use client"` and the site's motion hooks. Their props must be serializable. Articles themselves compile and render on the server, without shipping the MDX compiler to readers.
+
+The Vorpal article also uses `<VorpalEmbeddings />` for the three embedding methods, `<VorpalRanking />` for the worked rank-fusion example, `<VorpalBenchmarks />` for cold indexing, and `<VorpalComparisons kind="agents" />` or `kind="retrieval"` for measured comparisons. `<VorpalTgrep />` compares cold build time, peak indexing memory, and disk usage against tgrep with a fixed scale for each metric across all three repositories. `<VorpalFootprint />` compares peak resident memory and warmed index storage with equal-area cells. Each cell represents 25 MB, including partial cells; the fixed 4 GB RAM and 10 GB disk chart limits do not represent the benchmark machine's capacity. Comparison figures retain their full data tables. Article selectors share `components/article-tabs.module.css`; reuse it instead of introducing another control style. Animated figures use `useStudyMotion` to stop offscreen and obey the site's pause and reduced-motion settings.
+
+MDX uses JSX syntax: close tags, use `className` rather than `class`, and put literal braces or angle brackets in code spans/fences (or escape them). Unlike ordinary Markdown, MDX expressions execute JavaScript. Treat `.mdx` changes as code changes from trusted repository authors, including in preview builds. The component registry and import policy are not a sandbox: never feed remote content, uploads, or user submissions to this loader.
+
+Ordinary `.md` posts keep their sanitized Markdown renderer: raw HTML is discarded, unsafe links are stripped, and JSX is not executed. Existing registered Markdown figure images remain supported for compatibility, but use explicit React components in new MDX posts.
 
 ## Update projects
 

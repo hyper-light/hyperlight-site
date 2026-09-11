@@ -1617,12 +1617,25 @@ html[data-motion="paused"] .study-stage {
   border: 1px solid #2c3039;
 }
 .prose table {
-  display: block;
-  overflow-x: auto;
+  display: table;
+  width: 100%;
   border-collapse: collapse;
   max-width: 100%;
   margin: 28px 0;
   font-size: 13px;
+}
+.article-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 28px 0;
+}
+.article-table-scroll > table {
+  margin: 0;
+}
+.article-table-scroll:focus-visible {
+  outline: 1px solid #9faac0;
+  outline-offset: 3px;
 }
 .prose th,
 .prose td {

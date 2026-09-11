@@ -1,0 +1,494 @@
+---
+title: "Introducing Vorpal"
+description: "Hyperlight's hybrid tri-gram/tree-sitter code knowledge graph, substitution, search tool."
+date: "2026-09-10"
+category: "Engineering"
+project: "vorpal"
+featured: true
+draft: false
+---
+
+**Vorpal** is a code-analysis and search engine for people and agents. It finds definitions, follows calls across files, matches code by its syntax, and searches for the code behind a description. It runs locally, ships as one Rust binary, and works through the CLI or MCP. [The source is open.][repo]
+
+Agents spend too much time figuring out where things are - taking dozens of tool calls to figure out who calls a function, read the matches for type definitions, work out architecture and dependency relationships, and follow imports. Ask the next question and much of that work starts again. On smaller repositories it means minutes or hours of time wasted. On large repositories it means massive inference bills, broken or incomplete patches, and developer frustration.
+
+Vorpal combines a trigram text index with Tree-sitter parsing and a stored knowledge graph. A separate vector index uses exact search for smaller sets and Vamana for larger ones. Together, these let it narrow text searches, match code by structure, and follow resolved relationships. Vorpal supports 49 Tree-sitter grammars, compiled into its single binary, and offers ast-grep's substitution and rule capabilities for editing and linting.
+
+## Answering a question
+
+Download the [binary for your platform][releases]. There is no archive to unpack and no Node.js or Rust toolchain to install.
+
+On macOS with Apple Silicon:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+curl -fL https://github.com/hyper-light/vorpal/releases/latest/download/vorpal-macos-arm64 \
+  -o "$HOME/.local/bin/vorpal"
+chmod +x "$HOME/.local/bin/vorpal"
+export PATH="$HOME/.local/bin:$PATH"
+vorpal --help
+```
+
+The `export` makes Vorpal available in this shell. Add `~/.local/bin` to your shell's `PATH` if you want it available in new terminals too. Intel macOS, Linux, and Windows binaries are on the same [releases page][releases].
+
+Then try it on Vorpal itself:
+
+```sh
+git clone https://github.com/hyper-light/vorpal.git
+cd vorpal
+
+vorpal index .
+
+vorpal graph callers resolve_import_path \
+  --path crates/resolve/src/resolver.rs \
+  --format json
+
+vorpal graph implementors FileExtractor
+vorpal search "stat manifest change detection" -k 5 --format json
+```
+
+The first query finds callers of `resolve_import_path`. The path selects the definition in `resolver.rs`, since more than one file can define the same name. The second finds implementations of `FileExtractor`. The third searches for code that detects file changes, without requiring you to know what that code is called.
+
+The README's captured results include `resolve`, `OutlineExtractor`, and `FileStat`, respectively. This is Vorpal searching its own code. [CLI setup and examples.][getting-started]
+
+`vorpal index .` writes to `./.vorpal/index`. Queries read that location relative to your current directory. If you index a different directory, pass its index path with `--index`.
+
+## Why Tree-sitter matters
+
+Consider these two pieces of C:
+
+```c
+void *buffer = kmalloc(
+    requested_size,
+    GFP_KERNEL
+);
+
+const char *example = "kmalloc(requested_size, GFP_KERNEL)";
+```
+
+The first calls `kmalloc`. The second is a string. Searching for a call should match the first and skip the second, regardless of line breaks.
+
+[Tree-sitter][tree-sitter] parses a file into a concrete syntax tree. Each node identifies a piece of syntax and where it occurs in the source: a function definition, a call, an argument, a string, a comment. It also handles incomplete syntax, so useful analysis can continue while you are editing a file that does not compile yet.
+
+Vorpal builds on [ast-grep][ast-grep] for structural matching and rewriting. For example, from a C repository:
+
+```sh
+vorpal run -l c \
+  -p 'void example(void) { kmalloc($A, $B); }' \
+  --selector call_expression .
+```
+
+`$A` and `$B` match the two argument expressions. The surrounding function tells the C parser that this is a call; `--selector call_expression` selects just the call as the pattern. Keep it single-quoted so your shell does not expand `$A` and `$B`.
+
+Tree-sitter tells us where a call is and what it looks like. Finding the definition it calls is a separate problem. That requires scope, imports, and often type information. Vorpal's resolver does that work after extraction.
+
+## How it works
+
+There are four main steps: extract definitions and references from files, resolve those references, store the graph, and build the indexes used by queries. When a file changes, Vorpal reuses the work it can and updates the affected relationships.
+
+<VorpalArchitecture description="Files pass through Tree-sitter and reference resolution into a stored graph. CLI and MCP queries use the graph and search indexes. File changes update the affected data." />
+
+### Extract facts once
+
+The indexer finds supported files and checks which have changed. For each changed file, Tree-sitter parses the source. Language-specific rules extract definitions, and a tree walk collects references, calls, imports, and type information. Vorpal caches those results per file so the next index build can reuse them.
+
+Files are processed in parallel, with limits on queued work and temporary memory. The finished graph still grows with the repository; limiting parsing work does not make millions of nodes free to store. [Indexer implementation.][ingest]
+
+### Resolve across files
+
+Two functions called `save` are not necessarily the same function. The resolver checks where a name is used, what that file imports, which definitions are visible, and what can be established about the receiver's type.
+
+Results include a grade: `exact`, `constrained`, `heuristic`, or `unresolved`. Those grades distinguish a proven binding from a likely match. You can inspect the evidence behind a relationship and see what could not be resolved. [Resolver implementation.][resolver]
+
+Support differs by language. Having a parser does not mean every relationship in that language is implemented. The [language matrix][languages] lists what Vorpal extracts and resolves.
+
+### Store the graph
+
+Vorpal assigns nodes compact integer IDs and stores their fields in columns. It memory-maps the stored data so queries can read it without first copying the entire index into application memory. Stable external IDs are derived from the file path and entity path using BLAKE3; the smaller internal IDs are used for lookups within an index generation.
+
+Edges are indexed in both directions. If `A` calls `B`, we want to find both what `A` calls and who calls `B` quickly. Without the reverse index, finding callers could require checking every outgoing edge.
+
+The graph uses compressed sparse row storage. Each node has an offset into a flat array of targets:
+
+```text
+neighbors(v) = targets[offsets[v] : offsets[v + 1]]
+```
+
+Once we have the node, reading its neighbors takes work proportional to the number of edges attached to it. We do not scan the source files. Following calls transitively visits more nodes and edges, up to `O(V + E)` if the traversal covers the whole graph. Reading evidence and serializing the answer add to that query cost. [Graph storage.][graph-storage]
+
+### Update without mixing old and new data
+
+On disk, extraction results and graph data are grouped into buckets. An update can hard-link unchanged buckets into the next version of the index instead of rewriting them. Each version is called a generation and has a content-derived ID.
+
+The new generation is written before `CURRENT` is atomically changed to point to it. A reader gets the old generation or the new one, rather than half of each. MCP answers include the generation they used. Additional search indexes are checked against the data they belong to; if one is stale, Vorpal falls back to a slower query or reports that the feature is unavailable. [Index format.][index-format]
+
+## Why run a server?
+
+A cached syntax tree saves parsing time. It does not automatically save the work of walking the tree, resolving a name, or collecting its callers. If you repeat those steps for every question, you still pay for them every time.
+
+Vorpal stores the resolved relationships and the indexes needed to query them. Even a one-shot CLI query reads that stored index rather than parsing the repository again. The server goes further: it keeps the index loaded across requests, watches for file changes, and updates it while you work.
+
+The MCP client runs the server locally and talks to it over standard input and output. There is nothing to deploy.
+
+We can break the cost down like this:
+
+```text
+Repeated analysis ≈ Q × (P + A)
+Parse cache       ≈ P + Q × A + U_cache
+Persistent index  ≈ I + W + Q × (L + q) + U_index
+```
+
+`Q` is the number of questions. `P` is parsing, and `A` is the remaining analysis needed for each answer. For the stored index, `I` is the initial build, `W` is warm-up, `L` is request overhead, and `q` is the query itself. `U_cache` and `U_index` cover updates as files change.
+
+This is a simplified model of repeated code analysis. A cache that also stores resolved relationships removes more of `A`; a literal grep does not need parsing at all. The important difference is where the work happens. An index pays more up front to make each later question cheaper.
+
+Here are the kernel measurements from the README:
+
+| Operation                                 |  Published time |
+| ----------------------------------------- | --------------: |
+| Cold index, 75,954 parsed files           |           8.1 s |
+| Re-index with nothing changed             |          0.13 s |
+| Re-index after a function-body edit       |           0.4 s |
+| Warm MCP graph query, median round trip   |         0.13 ms |
+| Warm MCP default search, median / p95     | 0.8 ms / 2.1 ms |
+| First search, including ranking warm-up   |          0.19 s |
+| Save → daemon answer reflects a body edit |           2.0 s |
+
+Re-indexing a body edit takes 0.4 seconds in this test. From saving the file to seeing the change in a daemon answer takes 2.0 seconds, including change detection and refresh; individual saves ranged from 1.9 to 4.9 seconds. These are different measurements from querying an already-current index. [Indexing and serving benchmarks.][performance]
+
+### Reuse work inside large files
+
+For files over 1 MiB, the running server can retain the Tree-sitter tree and reuse its unchanged parts after an edit. For C, it can also reuse extraction results outside the edited definition. That makes a substantial difference for generated files:
+
+| Per-save workload                           | Fresh parse + extraction | Incremental parse + walk splice |
+| ------------------------------------------- | -----------------------: | ------------------------------: |
+| 54 MB generated C, edit between definitions |                    4.2 s |                           0.7 s |
+| Same file, edit inside its 43 MB definition |                    4.2 s |                           1.7 s |
+| 1.4 MB CPython `Parser/parser.c`            |                   107 ms |                           17 ms |
+
+Editing inside the 43 MB definition costs more because that whole definition must be walked again. The cached source and extraction snapshots have a default 256 MiB budget; retained syntax trees use additional memory. Extraction reuse currently ships for C and falls back to a full walk if its checks fail. Each benchmark result was checked against full re-extraction. [Incremental parsing benchmarks.][performance]
+
+Indexed structural search avoids work too. A trigram index checks which files could contain the literal text in a pattern. Within a file, recorded statement boundaries can narrow what needs parsing. Repeating the pattern reuses unchanged results. Some simple call patterns need no new parse: the index already records calls and their argument counts. When a shortcut cannot preserve the result, Vorpal uses the full parse. [Structural search.][structural-performance]
+
+## How search ranks results
+
+Graph queries work well when you know the symbol. Search is for when you do not.
+
+By default, Vorpal builds several ranked lists. One matches names and name tokens. Another compares **256-dimensional vectors** built by hashing words from names, signatures, and file basenames, then normalizing the vectors. A third takes the name matches and orders them by how many references point to them. When name matching and BM25 return nothing, a body-text search can supply more results. [Search implementation][search-source] and [vector generation.][embedder]
+
+This default vector search is lexical: it compares words found in code. The neural encoder is optional.
+
+<VorpalEmbeddings />
+
+The default embedder splits identifiers at punctuation and camel-case boundaries, then lowercases the tokens. Each token contributes to two signed hash buckets. L2 normalization gives the resulting vector unit length, so repeating every word does not simply make the vector larger. The lexical view above computes the actual buckets for `resolve import path`. [Lexical embedder.][embedder]
+
+The **learned tier** changes how those vectors are built. It learns from words and three-to-six-character fragments that occur together in the repository's definitions. Positive pointwise mutual information, or PPMI, measures associations between them; a truncated singular value decomposition, or SVD, turns that matrix into a smaller set of dimensions. The model removes dominant directions and uses weighted pooling so common tokens do not overwhelm the rest. The corpus determines the dimension, up to 256. Stored document vectors can also be refined using confidence-graded graph relationships. This is a corpus-trained embedder, not the neural reranker. [Learned embedding implementation.][learned-embedder]
+
+The **neural encoder** uses CodeRankEmbed to produce 768-dimensional vectors. It takes the contextual output for the CLS token and L2-normalizes it. Queries get the prefix `Represent this query for searching relevant code: `. Document inputs differ: the background embedding index can include a leading comment and the first paragraph of a definition's source, while the reranker uses a shorter name/signature/basename description. This adds information the lexical channels do not have. [Encoder][neural-embedder] and [document input construction.][search-source]
+
+The code graph and the nearest-neighbor graph have different jobs. The code graph records calls, imports, and other program relationships. Vamana connects nearby vectors to help find candidates. The neural document index uses its own quantized scan and rescoring path; it is not another name for either graph.
+
+The scores from these lists are not directly comparable. A vector distance and a count of references measure different things. Vorpal combines ranks instead, using reciprocal rank fusion:
+
+```text
+RRF(d) = Σ [1 / (60 + rank_c(d))]
+         c where channel c returned d
+```
+
+Vorpal uses **zero-based ranks**. First place contributes `1/60`; absence from a list contributes nothing. A definition ranked first in one list and sixth in another receives `1/60 + 1/65 ≈ 0.03205`. One that appears only first in a single list receives about `0.01667`. Appearing near the top of several lists helps. Each result keeps its ranks so you can see how it was scored. This is the base formula; optional dense-search settings can change a list's weight. [Fusion implementation.][fusion]
+
+<VorpalRanking />
+
+You can enable the corpus-trained embedder, or add a local CodeRankEmbed neural encoder. The neural reranker preserves the fused top result and reorders the remaining retrieved candidates. It cannot add an answer that was never retrieved; the separate background embedding index supplies that additional search path. The encoder requires a download and adds memory and query cost.
+
+The README's encoder results improve on CPython and Vorpal's repository, but score lower on the kernel. Those quality tables were measured before background embedding fill, with default and optional tiers measured on different days. The choice depends on the repository and the questions you ask.
+
+To test your own queries, put one `query => expected-name-or-path` pair per line in a file, then run:
+
+```sh
+vorpal tune --queries my-queries.txt
+```
+
+Vorpal compares the configurations and enables a tier only when it passes the measured improvement checks. Without expected answers, the command shows comparisons but does not change the settings. [Ranking tiers and evaluation.][search-quality]
+
+## The benchmarks
+
+On the Linux kernel, Vorpal builds an 8.89-million-node graph in **8.1 seconds**. codebase-memory-mcp takes **296 seconds** on the same checkout. Vorpal uses about a fifth of the peak memory and less than a third of the disk space. Once the index is current, a warm graph query takes **0.13 milliseconds**.
+
+Those are different parts of the job. Building the index, keeping it current, answering a query, and getting an agent to finish a task each deserve their own measurements.
+
+The results below come from the [README benchmarks][readme], run on an Apple M5 Max with 18 cores and 128 GB RAM, macOS 26.4.1, and rustc 1.98.0. The main indexing and competitor comparisons used v0.9.0 on September 7, 2026. The broader language and optional-tier results include September 5–6 runs; the agent experiments use v0.8.3 and are dated separately below.
+
+The kernel checkout is `1590cf032971`, CPython is `b86a41cbf63`, and the other repositories have pinned commits in the README. CLI timings include process startup. Vorpal's cold indexing times are the best of three runs after checking that the machine was quiet. “Cold” means building a new index, not flushing the operating system's file cache. The tgrep build times are medians of three; daemon query times are client-side round trips.
+
+<VorpalBenchmarks />
+
+### Against another code graph
+
+[codebase-memory-mcp][cbm] also combines Tree-sitter, a typed graph, search, and MCP in a local binary. We compared commit `997d087`, built from source, in its `full` mode—the mode that includes semantic edges. Both tools ran on the same machine and checkouts.
+
+| Repository | Operation | Vorpal | codebase-memory-mcp |
+| --- | --- | ---: | ---: |
+| Linux kernel | Cold index | **8.1 s** | 296 s |
+| Linux kernel | Nothing changed | **0.13 s** | 14.2 s |
+| CPython | Cold index | **0.9 s** | 38.5 s |
+| CPython | Nothing changed | **0.02 s** | 5.2 s |
+| Vorpal, including vendored grammars | Cold index | **6.9 s** | 43.1 s |
+| Vorpal, including vendored grammars | Nothing changed | **0.02 s** | 5.4 s |
+
+That is roughly **37× faster on the kernel, 43× on CPython, and 6× on Vorpal's own repository** for a cold build. Checking an unchanged index is about **109×, 260×, and 270× faster**, respectively. The latter matters when an editor or agent checks the index repeatedly throughout a session.
+
+The speed does not come from building a symbol-only index. Here are the graph sizes and resource costs:
+
+| Repository | Measurement | Vorpal | codebase-memory-mcp |
+| --- | --- | ---: | ---: |
+| Linux kernel | Nodes | 8.89 M | 8.53 M |
+| Linux kernel | Peak indexing RSS | **6.1 GB** | 30.8 GB |
+| Linux kernel | Index on disk | **4.8 GB** | 15.8 GB |
+| CPython | Nodes | 162,945 | 136,118 |
+| CPython | Peak indexing RSS | **0.7 GB** | 6.5 GB |
+| CPython | Index on disk | **160 MB** | 632 MB |
+| Vorpal | Nodes | 80,611 | 67,797 |
+| Vorpal | Peak indexing RSS | **11.6 GB** | 31.8 GB |
+| Vorpal | Index on disk | 860 MB | **297 MB** |
+
+On the kernel, that is about **80% less peak memory and 70% less disk**. The extractors and graph representations differ, so the node counts are not expected to match exactly. The disk figures above are the built indexes, before Vorpal warms its additional search tiers. cbm's RSS includes its process tree, sampled every 50 ms.
+
+The query comparison also separates one-shot commands from the running server:
+
+| Kernel query | Vorpal CLI | cbm CLI | Vorpal daemon |
+| --- | ---: | ---: | ---: |
+| Search | **0.15 s** | 5.6 s | 0.7 ms |
+| Callers of a symbol | **0.01 s** | 3.6–4.1 s | 0.1 ms |
+
+Even paying for process startup and opening the index, Vorpal's search is about **37× faster** in this comparison. Keeping the process running removes most of that remaining overhead. The separate multi-query serving test below measures the default kernel search at 0.8 ms median; these are separate runs, not interchangeable timings.
+
+cbm supports more languages—162 grammars to Vorpal's 49—and its Vorpal-repository index is smaller on disk. Those are useful differences to know when choosing a tool. [Full comparison.][comparisons]
+
+### Across languages and repository sizes
+
+The kernel is not the only large tree in the benchmark. These are full index builds, including the graph, with file counts limited to files a grammar actually parsed:
+
+| Repository | Main language | Files parsed | Nodes | Cold build | Unchanged |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Linux kernel | C | 75,954 | 8,891,771 | 8.1 s | 0.13 s |
+| LLVM | C++ | 86,124 | 1,444,028 | 7.3 s | 0.34 s |
+| Zig | Zig | 17,025 | 1,085,567 | 5.6 s | 0.04 s |
+| Kotlin | Kotlin | 75,448 | 795,719 | 2.5 s | 0.43 s |
+| Kubernetes | Go | 26,641 | 692,828 | 1.9 s | 0.09 s |
+| Roslyn | C# | 19,522 | 490,284 | 1.9 s | 0.08 s |
+| Rust | Rust | 41,607 | 464,064 | 2.5 s | 0.09 s |
+| WordPress | PHP | 4,195 | 286,824 | 1.7 s | 0.02 s |
+| Spark | Scala | 11,512 | 253,753 | 1.5 s | 0.06 s |
+| Kafka | Java | 7,246 | 209,131 | 0.7 s | 0.04 s |
+| Next.js | TS / JS | 27,216 | 204,754 | 0.9 s | 0.25 s |
+| GHC | Haskell | 15,837 | 178,259 | 0.6 s | 0.05 s |
+| CPython | Python / C | 3,841 | 162,945 | 0.9 s | 0.02 s |
+| Rails | Ruby | 3,952 | 49,635 | 0.3 s | 0.03 s |
+| Neovim | C / Lua | 1,476 | 40,507 | 0.2 s | 0.01 s |
+| Vue | Vue / TS | 626 | 11,191 | 0.1 s | 0.01 s |
+| Vorpal, with vendored grammars | Rust / generated C | 1,917 | 80,611 | 6.9 s | 0.02 s |
+
+File count alone does not predict the time. Vorpal's own checkout includes a 33 MB generated `parser.c`; that one file sets the build's floor while other files parse in parallel. Conversely, LLVM has more than 86,000 parsed files and still finishes in 7.3 seconds. The README records the pinned commits and the earlier September 5–6 measurements alongside the September 7 kernel, CPython, and Vorpal runs. [Indexing results.][performance]
+
+### Indexed text search and structural search
+
+[tgrep][tgrep] 1.0.4 is a trigram-indexed grep with a server. It is a good way to separate the benefit of indexing text from the additional work Vorpal does with that text.
+
+First, the cost of building the index:
+
+<VorpalTgrep />
+
+tgrep is much lighter because it indexes text rather than building a code graph. It also indexes more of the kernel checkout: 94,719 files versus Vorpal's 75,954 parsed files.
+
+Now, the questions those indexes answer:
+
+| Kernel workload | Vorpal | tgrep |
+| --- | --- | --- |
+| 102-query text-search suite, median per query | **12.8 ms**, lines with their containing symbol | 21 ms, text lines |
+| `kmalloc` search | 35 ms, 2,715 two-argument call expressions with their functions | 18 ms, 3,387 lines matching `kmalloc\(` |
+| Callers of `vfs_read` | **0.10 ms**, 3 call edges with call sites | 7.7 ms, 13 matching lines |
+| Save a file, then query the updated kernel clone | 4.3 s | 4.4 s |
+
+On the directly comparable text-search suite, Vorpal is about **1.6× faster** and returns the symbol containing each line. Every query was checked against an exhaustive text scan. The other rows answer related but different questions: a line mentioning a name is not necessarily a caller, and a two-argument call is more specific than a text match. Vorpal's ranked definition search takes 0.65 ms in this comparison, but it is not the equivalent of grep.
+
+The save test above includes a busy filesystem event service. With that service quiet, Vorpal's save-to-answer time was 2.0–2.2 seconds. That is why a re-index timing alone does not describe the whole editing experience. [tgrep comparison.][comparisons]
+
+The index also changes what structural matching costs:
+
+| Structural query | Before the text index | With the text index |
+| --- | ---: | ---: |
+| `code_search kmalloc($A, $B)` | 4.3 s | **35 ms**, 2,715 calls |
+| `structural_search kmalloc($A, $B)` | 4.1 s, stopped at 100 results | **51 ms**, all 2,715 calls |
+| `code_search $R = schedule_timeout($A)` | 4.4 s | **45 ms** |
+| `code_search kfree($A)` | Not reported | **90 ms**, 40,499 calls |
+| `code_search if ($C) return $X;` | Not reported | 3.7 s first call; **0.4 s** repeated |
+
+The `kmalloc` code search is about **123× faster** than the earlier path. The structural search returns the complete result in 51 ms where the earlier implementation took 4.1 seconds to stop at 100. Literal filtering, recorded call arguments, and reuse of unchanged parse results remove different kinds of repeated work. The broad `if` pattern still costs more on first use; it has 381,811 matches. These are medians of three calls to one daemon. [Structural search results.][structural-performance]
+
+A standalone scan, without the warm daemon's query path, gives another useful comparison:
+
+| Tool | Time | Result |
+| --- | ---: | --- |
+| `vorpal scan` | 1.5 s warm; 2.5 s first run | 6,819 matching call-expression nodes |
+| `ripgrep` | 0.8 s | 3,387 matching text lines |
+
+That scan covers 63,775 C files. Its rule matches call expressions containing `kmalloc`, including `kmalloc_array`, `devm_kmalloc`, and outer calls that wrap them. The grep matches lines containing `kmalloc(`. The extra work buys syntax-aware results, not a faster way to ask the identical question. [Scan comparison.][comparisons]
+
+### Query latency, warm-up, and memory
+
+The server keeps the index open across requests. This table measures 30 client-side stdio round trips per tool and samples resident memory after each call:
+
+| Index / tier | Search median | Search p95 | First search | Graph query | Peak RSS |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Kernel / default | **0.8 ms** | 2.1 ms | 0.19 s | 0.13 ms | 2.1 GB |
+| Kernel / learned | 2.1 ms | 2.7 ms | 0.22 s | 0.18 ms | 2.4 GB |
+| Kernel / learned + f16 | 36 ms | 319 ms | 0.69 s | 0.13 ms | 3.0 GB |
+| Kernel / learned + f32 | 36 ms | 324 ms | 0.59 s | 0.13 ms | 2.9 GB |
+| CPython / default | **0.3 ms** | 0.7 ms | 5 ms | 0.13 ms | 110 MB |
+| CPython / learned | 1.4 ms | 1.7 ms | 11 ms | 0.14 ms | 154 MB |
+| CPython / learned + f16 | 36 ms | 253 ms | 0.37 s | 0.15 ms | 748 MB |
+| CPython / learned + f32 | 35 ms | 256 ms | 0.29 s | 0.15 ms | 658 MB |
+| Vorpal / default | **0.3 ms** | 0.5 ms | 3 ms | 0.10 ms | 65 MB |
+| Vorpal / learned | 1.3 ms | 1.4 ms | 6 ms | 0.12 ms | 79 MB |
+| Vorpal / learned + f16 | 35 ms | 218 ms | 0.42 s | 0.13 ms | 652 MB |
+| Vorpal / learned + f32 | 35 ms | 226 ms | 0.33 s | 0.13 ms | 561 MB |
+
+The default tier answers these searches in less than a millisecond at the median. Adding the encoder changes both the latency and memory budget. Its median benefits from repeated queries hitting the embedding cache; the p95 shows the cost of new queries, roughly 0.2–0.3 seconds here. Graph queries do not use the encoder and remain fast in every tier.
+
+The f16 model is a smaller download, not a promise of lower runtime memory: it decodes to f32. The encoder runs also include background embedding work—complete on CPython and Vorpal, capped at ten minutes on the kernel. First-search timings have the weights and index in the OS page cache. They should not be read as first launch after a reboot.
+
+Memory and disk are separate costs. The RAM view below uses the peak resident memory measured above. The disk view includes the index and warmed search tiers, so it differs from the cold-build index size.
+
+<VorpalFootprint />
+
+Encoder weights add 274 MB for f16 or 547 MB for f32, stored once in the user's model directory rather than copied into every repository. [Serving and storage results.][search-quality]
+
+### Finding the right result
+
+Speed is only useful if the right code comes back. The labeled sets contain 54 kernel queries, 54 CPython queries, and 55 Vorpal queries, spanning six query classes from exact names to paraphrases. Relevance labels cite source lines so the expected answers can be inspected.
+
+One metric is normalized discounted cumulative gain, or NDCG:
+
+```text
+DCG@10  = Σ (2^g_i − 1) / log2(i + 1), for i = 1 … 10
+NDCG@10 = DCG@10 / ideal_DCG@10
+```
+
+`g_i` is the relevance grade of the result at position `i`, starting at one. A more relevant answer earns more credit, and putting it further down the list reduces that credit. Dividing by the best possible ordering of the labeled answers gives a score between zero and one. The table averages that score across queries; it is a ranking score, not a percentage of questions answered correctly. [Evaluator.][evaluation]
+
+The README also reports MRR, which measures how high the first relevant result appears, and recall@5, which measures how much of the labeled relevant set appears in the first five results.
+
+<VorpalComparisons kind="retrieval" />
+
+On CPython, the encoder raises NDCG@10 by about **15%** and recall@5 by **28%** relative to the default. On Vorpal's repository, NDCG@10 improves by about **13%**. The kernel is different: the default wins on NDCG and MRR, while the learned tier adds a little recall. That is exactly why `vorpal tune` measures your queries instead of assuming the most expensive configuration is the best one.
+
+The default column was measured on September 7, after body-text candidates were added; learned and encoder columns are from September 6. These quality results precede the encoder's background embedding fill. Descriptive kernel queries and paraphrases remain weak in that state: reranking cannot rescue an answer that never reaches the candidate set. [Retrieval results and labels.][search-quality]
+
+### What an agent saves
+
+Start with the tool's own work, before counting model turns. These September 5 measurements use v0.8.3: one warm daemon request versus the ripgrep-and-read operations behind an agent's built-in tools. Vorpal timings are medians of five requests after an initial call.
+
+| Question | Vorpal | Grep + Read | What comes back |
+| --- | ---: | --- | --- |
+| Vorpal: callers of `tool_result` | **0.10 ms** | 16 ms | 2 call-site records vs 3 lines |
+| Vorpal: callees of `tool_result` | 0.14 ms | No direct equivalent | 7 call-site records |
+| Vorpal: what `run_install` reaches | **0.05 ms**, one call | 6 ms | 4 records vs 76 lines |
+| Vorpal: source of `render_toml` | **0.05 ms** | 39 ms, two commands | Verified body vs 58 lines |
+| Kernel: callers of `schedule_timeout_interruptible` | **2.7 ms** | 748 ms | First 100 of 140 resolved records vs 164 lines |
+| Kernel: callers of `vfs_read` | **0.10 ms** | 692 ms | 3 call-site records vs 13 lines |
+| Kernel: callees of `vfs_read` | **0.11 ms** | 763 ms, then read the body | 4 call-site records vs 41 lines |
+| Kernel: find `schedule_timeout` | **0.05 ms** | 677 ms | 1 definition vs 1 line |
+| Kernel: source of `vfs_read` | **0.08 ms** | 713 ms, then a read | Verified body vs 42 lines |
+| Kernel: what `vfs_read` reaches, depth two | 0.06 ms | No direct equivalent | 3 records |
+
+The graph returns relationships the model can use directly. Grep returns text the model still has to interpret. That distinction matters even when both tools are fast. It also means fewer records do not automatically prove better coverage: the graph can miss relationships, and a large resolved result can be longer than the grep output.
+
+Now include the model. On September 6, we asked Claude Code 2.1.261, running Opus 5 at high effort, four questions through three access paths. Each cell ran four times; these are medians of the last three runs with a warm prompt cache.
+
+<VorpalComparisons kind="agents" />
+
+For the kernel callers question, MCP reduced processed tokens by **51%**, billed cost by **79%**, and wall time by **58%**. The CLI reduced them by **65%, 86%, and 63%**. Those are reductions in the work required to answer the question, not just in the few milliseconds spent looking up a symbol.
+
+Tokens include input and cache reads and writes, but exclude output. In this client, the first MCP tool use requires a separate schema-loading turn. The shell tool is already available, which lets the CLI finish in two turns. Each turn processes the context again; avoiding one changes both token use and cost.
+
+These are warm-cache bills, not a price forecast. The first question after an idle hour incurred an additional measured cache-write cost of $0.09–$0.14 for grep, $0.10–$0.13 for MCP, and $0.17–$0.22 for the shell setup. The prefixes differed in size and in how much was already cached.
+
+The runs also exposed concrete coverage gaps. Grep found two inline helpers in `vfs_read` that were not recorded as graph edges, and a transitive call inside a struct literal that the graph missed. On the Vorpal callers question, grep named the enclosing function correctly in only one of six recorded runs. The graph returned some constrained candidates that the model correctly rejected. Both the result and the evidence behind it matter. [Agent experiments and transcripts.][comparisons]
+
+Across all four questions, using Vorpal reduced the measured wall time. Most of the remaining time was the model itself. That is the point: spend less of the agent's context and time rediscovering the code, and more of it doing the work.
+
+## Using MCP
+
+Add Vorpal to your client's MCP configuration. For clients that use JSON, the entry looks like this; replace the path with your repository's absolute path:
+
+```json
+{
+  "mcpServers": {
+    "vorpal": {
+      "command": "vorpal",
+      "args": [
+        "mcp",
+        "--index",
+        "/absolute/path/to/project/.vorpal/index",
+        "--profile",
+        "analysis"
+      ]
+    }
+  }
+}
+```
+
+The client starts Vorpal. If it cannot find `vorpal` on `PATH`, set `command` to the binary's absolute path. The `analysis` profile gives the agent search and graph tools while leaving out the explicit index tool and the full structural tools. Vorpal still updates its own index as files change.
+
+Keep the `<project>/.vorpal/index` layout for automatic file watching. A custom index location outside that layout needs explicit refreshes. With the default layout, Vorpal builds the index if it is missing. To preview automatic client setup instead, run `vorpal mcp install --dry-run`. [MCP setup.][mcp]
+
+To find callers of `resolve_import_path` in the Vorpal checkout, the agent calls `graph` with these arguments:
+
+```json
+{
+  "relation": "callers",
+  "name": "resolve_import_path",
+  "path": "crates/resolve/src/resolver.rs",
+  "format": "lean"
+}
+```
+
+Change `relation` to `callees` to follow calls in the other direction, or to `references` to find uses of the definition.
+
+The answer includes the index generation and matching records. Callers and callees can include the line where the call occurs. If there are more results than fit in one page, `total`, `truncated`, and `nextCursor` tell the agent what remains. Source and evidence tools let it read the code behind a result. [MCP tools.][mcp]
+
+## Try it on your code
+
+Vorpal gives you a stored, searchable model of the code, with the information needed to check its answers. Dynamic calls, macros, and relationships a language's extractor does not support can still leave gaps. A traversal follows the edges Vorpal found; it does not replace tests or a compiler.
+
+Repeatability matters here. The release checks compare independent builds byte-for-byte and check incremental results against fresh builds. Changing a file and rebuilding should lead to the same index as starting from that changed source. [Build checks.][readme]
+
+Install the [CLI][getting-started], point it at a repository, and ask about a function you know. Check its callers. Follow its dependencies. Then connect it to your [MCP client][mcp] and let the agent use the same queries.
+
+The less time it spends rediscovering the codebase, the more time it has to work on it.
+
+[repo]: https://github.com/hyper-light/vorpal
+[releases]: https://github.com/hyper-light/vorpal/releases
+[readme]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md
+[getting-started]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/getting-started.md
+[tree-sitter]: https://tree-sitter.github.io/tree-sitter/
+[ast-grep]: https://ast-grep.github.io/guide/introduction.html
+[ingest]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ingest/src/pipeline.rs
+[resolver]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/resolve/src/resolver.rs
+[languages]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/LANGUAGES.md
+[graph-storage]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/graph/src/csr.rs
+[index-format]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/INDEX_FORMAT.md
+[performance]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md#performance
+[structural-performance]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md#how-fast-is-structural-search
+[search-source]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/index/src/lib.rs
+[embedder]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ann/src/embed.rs
+[learned-embedder]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ann/src/learned/mod.rs
+[neural-embedder]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ann/src/encoder/mod.rs
+[fusion]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/index/src/lib.rs#L4328-L4366
+[search-quality]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md#is-search-any-good
+[comparisons]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md#how-does-it-compare
+[cbm]: https://github.com/DeusData/codebase-memory-mcp
+[tgrep]: https://github.com/microsoft/tgrep
+[evaluation]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/xtask/src/searcheval.rs
+[mcp]: https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/mcp.md

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-type NewPostOptions = { directory?: string; now?: Date };
+type NewPostOptions = { directory?: string; now?: Date; format?: "md" | "mdx" };
 
 export function createPost(
   title: string,
@@ -29,12 +29,24 @@ export function createPost(
   const date = now.toISOString().slice(0, 10);
   const directory =
     options.directory ?? path.join(process.cwd(), "content", "posts");
+  const format = options.format ?? "md";
   const body = `---\ntitle: ${JSON.stringify(cleanTitle)}\ndescription: "A short summary of this post."\ndate: "${date}"\ncategory: "Notes"\nfeatured: false\ndraft: true\n---\n\nStart writing here.\n\n## The idea\n\nA little context goes a long way.\n`;
 
   fs.mkdirSync(directory, { recursive: true });
   for (let suffix = 1; suffix < 10_000; suffix++) {
     const slug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`;
-    const filePath = path.join(directory, `${slug}.md`);
+    const filePath = path.join(directory, `${slug}.${format}`);
+    const otherPath = path.join(
+      directory,
+      `${slug}.${format === "md" ? "mdx" : "md"}`,
+    );
+    try {
+      // Both extensions share a URL, including draft files and symlinks.
+      fs.lstatSync(otherPath);
+      continue;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
     try {
       // Exclusive creation is atomic: simultaneous invocations cannot overwrite
       // each other or an existing post, including an existing symlink.
@@ -52,10 +64,14 @@ if (
   path.resolve(process.argv[1]) === path.resolve("scripts/new-post.ts")
 ) {
   try {
-    const { filePath } = createPost(process.argv.slice(2).join(" "));
+    const args = process.argv.slice(2);
+    const mdx = args[0] === "--mdx";
+    const { filePath } = createPost((mdx ? args.slice(1) : args).join(" "), {
+      format: mdx ? "mdx" : "md",
+    });
     console.log(`Created draft: ${path.relative(process.cwd(), filePath)}`);
     console.log(
-      "Edit the Markdown, then set draft: false when you are ready to publish.",
+      "Edit the post, then set draft: false when you are ready to publish.",
     );
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

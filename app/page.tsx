@@ -40,9 +40,9 @@ export default function Home() {
           <div>
             <span className="eyebrow section-number">01 / The projects</span>
             <h2 id="projects-heading">
-              Small surfaces.
+              Startup simple.
               <br />
-              Deep capabilities.
+              Enterprise scalable.
             </h2>
           </div>
           <div className="section-heading-aside">

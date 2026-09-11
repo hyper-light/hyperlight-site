@@ -1,0 +1,256 @@
+.figure {
+  container-type: inline-size;
+  position: relative;
+  overflow: hidden;
+  margin: 36px 0;
+  border: 1px solid #2a3039;
+  border-radius: 9px;
+  background:
+    radial-gradient(ellipse at 4% 0, #a4bacc08, transparent 62%), #0a0c0f;
+}
+.figure::before {
+  position: absolute;
+  top: 0;
+  left: 16%;
+  right: 16%;
+  height: 1px;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #9fbab852,
+    #a7aed05e,
+    #c4a8bd45,
+    transparent
+  );
+  background-size: 220% 100%;
+  background-position: var(--tgrep-light, 0%) 0;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 23px 24px 22px;
+}
+.eyebrow {
+  color: #a3aab8;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.11em;
+}
+.figure .title {
+  margin: 8px 0 0;
+  color: #e1e5e9;
+  font-size: 19px;
+  font-weight: 450;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+.iconButton {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #303641;
+  border-radius: 50%;
+  background: transparent;
+  color: #b8c3d2;
+  cursor: pointer;
+}
+.iconButton:hover {
+  color: #f0f2f7;
+  border-color: #69768a;
+}
+.iconButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.iconButton:focus-visible,
+.raw summary:focus-visible,
+.tableScroll:focus-visible {
+  outline: 2px solid #b7c4df;
+  outline-offset: 4px;
+}
+.intro {
+  padding: 20px 24px 0;
+}
+.scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #acb9ca;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.figure .description {
+  margin: 8px 0 0;
+  color: #98a8bd;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.corpora {
+  padding: 22px 24px 24px;
+}
+.corpus + .corpus {
+  padding-top: 22px;
+  margin-top: 20px;
+  border-top: 1px solid #29313c;
+}
+.figure .corpus h4 {
+  margin: 0 0 18px;
+  color: #d5dfec;
+  font-size: 14px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+.plot {
+  position: relative;
+  height: 144px;
+}
+.figure .values {
+  margin: 0;
+  padding: 0;
+}
+.values > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  height: 72px;
+}
+.values dt {
+  color: #c2cede;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.values dd {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  color: #e2e8f0;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+.lowest {
+  color: #9dacc1;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 9px;
+}
+.ribbons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 144px;
+  overflow: visible;
+  pointer-events: none;
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -16px;
+  color: #91a0b5;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.raw {
+  border-top: 1px solid #252c36;
+}
+.raw > summary {
+  min-height: 48px;
+  padding: 17px 24px;
+  color: #c8d2df;
+  font-size: 12px;
+  cursor: pointer;
+}
+.raw > summary span {
+  margin-left: 8px;
+  color: #91a0b5;
+  font-size: 10px;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 24px 20px;
+}
+.figure .rawTable {
+  display: table;
+  width: 100%;
+  min-width: 490px;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.rawTable caption {
+  padding: 0 0 12px;
+  color: #b3c0d2;
+  text-align: left;
+  font-size: 11px;
+}
+.figure .rawTable th,
+.figure .rawTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #29313d;
+  color: #b5c3d5;
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+.figure .rawTable td:nth-child(n + 3),
+.figure .rawTable th:nth-child(n + 3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.figure .rawTable thead th {
+  color: #d5deeb;
+}
+.caption {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 17px 24px 21px;
+  border-top: 1px solid #252c36;
+  color: #b5becb;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.note {
+  color: #98a7bb;
+  font-size: 10px;
+}
+.caption a {
+  color: #b8c8dc;
+  text-decoration: underline;
+  text-decoration-color: #52617a;
+  text-underline-offset: 3px;
+}
+@container (max-width: 420px) {
+  .header {
+    gap: 12px;
+    padding: 20px 17px 22px;
+  }
+  .figure .title {
+    font-size: 18px;
+  }
+  .intro,
+  .corpora,
+  .caption,
+  .raw > summary {
+    padding-inline: 17px;
+  }
+  .tableScroll {
+    margin-inline: 17px;
+  }
+  .values dd {
+    gap: 6px;
+  }
+}

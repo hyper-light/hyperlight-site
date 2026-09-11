@@ -18,6 +18,12 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const project = getProject((await params).slug);
   if (!project) return {};
+  const image = {
+    url: `/share/project/${project.slug}`,
+    width: 1200,
+    height: 630,
+    alt: `${project.name} — Hyperlight`,
+  };
   return {
     title: project.name,
     description: project.description,
@@ -26,13 +32,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${project.name} — Hyperlight`,
       description: project.description,
       url: `/projects/${project.slug}`,
-      images: [],
+      images: [image],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: `${project.name} — Hyperlight`,
       description: project.description,
-      images: [],
+      images: [image],
     },
   };
 }

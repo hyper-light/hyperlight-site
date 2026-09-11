@@ -1,0 +1,302 @@
+.figure {
+  container-type: inline-size;
+  position: relative;
+  margin: 36px 0;
+  overflow: hidden;
+  border: 1px solid #2a3039;
+  border-radius: 9px;
+  background:
+    radial-gradient(ellipse at 4% 0, #a4bacc08, transparent 62%), #0a0c0f;
+}
+.figure::before {
+  position: absolute;
+  top: 0;
+  right: 16%;
+  left: 16%;
+  height: 1px;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #9fbab852,
+    #a7aed05e,
+    #c4a8bd45,
+    transparent
+  );
+  background-size: 220% 100%;
+  background-position: var(--comparison-light, 0%) 0;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 23px 24px 22px;
+}
+.eyebrow {
+  color: #a3aab8;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.11em;
+}
+.figure .title {
+  margin: 8px 0 0;
+  color: #e1e5e9;
+  font-size: 19px;
+  font-weight: 450;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+.iconButton {
+  display: grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #303641;
+  border-radius: 50%;
+  background: transparent;
+  color: #b8c3d2;
+  cursor: pointer;
+}
+.iconButton:hover {
+  color: #f0f2f7;
+  border-color: #69768a;
+}
+.iconButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.iconButton:focus-visible,
+.raw summary:focus-visible,
+.tableScroll:focus-visible {
+  outline: 2px solid #b7c4df;
+  outline-offset: 4px;
+}
+.selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 23px 24px 0;
+}
+.sample {
+  min-width: 0;
+}
+.sample > span {
+  color: #9ba9bc;
+  font-size: 10px;
+}
+.figure .sample h4 {
+  margin: 6px 0 0;
+  color: #dee5ef;
+  font-size: 16px;
+  font-weight: 450;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.navigation {
+  display: flex;
+  flex-shrink: 0;
+  gap: 7px;
+}
+.chartSection {
+  padding: 22px 24px 21px;
+}
+.chartHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: #aab7c9;
+  font-size: 10px;
+}
+.chartHeading span:first-child {
+  font-family: var(--font-mono), monospace;
+  color: #c3cddd;
+}
+.plot {
+  position: relative;
+  height: 216px;
+}
+.figure .values {
+  margin: 0;
+  padding: 0;
+}
+.values > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 9px;
+  height: 72px;
+}
+.values dt {
+  color: #c2cede;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.values dd {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  margin: 0;
+  color: #e2e8f0;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+.best {
+  min-width: 36px;
+  color: #a8b9cd;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 9px;
+}
+.bars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 216px;
+  overflow: visible;
+  pointer-events: none;
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -20px;
+  color: #91a0b5;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.figure .metricDescription {
+  min-height: 38px;
+  margin: 18px 0 0;
+  color: #a5b2c4;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.raw {
+  border-top: 1px solid #252c36;
+}
+.raw > summary {
+  padding: 17px 24px;
+  color: #c8d2df;
+  font-size: 12px;
+  cursor: pointer;
+}
+.raw > summary span {
+  margin-left: 8px;
+  color: #91a0b5;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 24px 20px;
+}
+.figure .rawTable {
+  display: table;
+  width: 100%;
+  min-width: 590px;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.rawTable caption {
+  padding: 0 0 12px;
+  color: #b3c0d2;
+  text-align: left;
+  font-size: 11px;
+}
+.figure .rawTable th,
+.figure .rawTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #29313d;
+  color: #b5c3d5;
+  font-weight: 400;
+  text-align: right;
+  white-space: nowrap;
+}
+.figure .rawTable th:first-child,
+.figure .rawTable td:nth-child(2),
+.figure .rawTable th:nth-child(2) {
+  text-align: left;
+}
+.figure .rawTable th:first-child {
+  max-width: 220px;
+  white-space: normal;
+}
+.figure .rawTable thead th {
+  color: #d5deeb;
+}
+.rawTable td {
+  font-variant-numeric: tabular-nums;
+}
+.caption {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 17px 24px 21px;
+  border-top: 1px solid #252c36;
+  color: #b5becb;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.note {
+  color: #98a7bb;
+  font-size: 10px;
+}
+.caption a {
+  color: #b8c8dc;
+  text-decoration: underline;
+  text-decoration-color: #52617a;
+  text-underline-offset: 3px;
+}
+@container (max-width: 420px) {
+  .header {
+    padding: 20px 17px 22px;
+    gap: 12px;
+  }
+  .figure .title {
+    font-size: 18px;
+  }
+  .selection {
+    margin-inline: 17px;
+    gap: 10px;
+  }
+  .navigation {
+    gap: 4px;
+  }
+  .figure .sample h4 {
+    font-size: 14px;
+  }
+  .chartSection {
+    padding-inline: 17px;
+  }
+  .values dt {
+    font-size: 10px;
+  }
+  .values dd {
+    gap: 5px;
+    font-size: 12px;
+  }
+  .best {
+    min-width: 0;
+    font-size: 8px;
+  }
+  .raw > summary {
+    padding-inline: 17px;
+  }
+  .tableScroll {
+    margin-inline: 17px;
+  }
+  .caption {
+    padding-inline: 17px;
+  }
+}
