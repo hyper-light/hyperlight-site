@@ -205,7 +205,7 @@ test("the renamed article retains its link, publication, and share metadata", as
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Tools that make the work clearer.",
+      name: "Announcing Hyperlight",
       exact: true,
     }),
   ).toBeVisible();

@@ -14,9 +14,7 @@ test("Agentic Proof of Work replaces the old title and keeps its incoming URL", 
   const posts = getPosts({ now: new Date("2026-09-10T12:00:00Z") });
   assert.ok(posts.some((post) => post.slug === "agentic-proof-of-work"));
   assert.ok(!posts.some((post) => post.slug === "what-counts-as-done"));
-  assert.ok(
-    posts.some((post) => post.slug === "tools-that-make-the-work-clearer"),
-  );
+  assert.ok(posts.some((post) => post.slug === "announcing-hyperlight"));
   const post = await getPost("agentic-proof-of-work");
   assert.ok(post);
   assert.equal(post.title, "Agentic Proof of Work");

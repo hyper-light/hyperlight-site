@@ -2,6 +2,7 @@
 export const postRedirects: Readonly<Record<string, string>> = {
   "a-codebase-is-more-than-text": "introducing-vorpal",
   "what-counts-as-done": "agentic-proof-of-work",
+  "tools-that-make-the-work-clearer": "announcing-hyperlight",
 };
 
 export function canonicalPostSlug(slug: string): string {
