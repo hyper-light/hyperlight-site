@@ -422,13 +422,12 @@ export function VorpalTgrep() {
       </details>
       <figcaption className={styles.caption} id={id + "-caption"}>
         <span>
-          Linear scales start at zero and stay fixed across repositories. Ribbon
-          depth and light move; their horizontal endpoints show the measured
-          values.
+          Compare build time, peak RAM, and disk usage. Each metric uses the
+          same zero-based scale across repositories.
         </span>
         <span>
-          tgrep builds a text index. Vorpal also parses syntax and builds a code
-          graph. On the kernel, tgrep indexed 94,719 files; Vorpal parsed
+          tgrep indexes text. Vorpal also parses syntax and connects
+          definitions. On the kernel, tgrep indexed 94,719 files; Vorpal parsed
           75,954.
         </span>
         <span className={styles.note}>

@@ -666,18 +666,18 @@ export function VorpalRanking() {
             </span>
             <span>
               {focused.id === "B"
-                ? "Vector's first choice earns one contribution. Neither of the other lists nominates B."
+                ? "B leads the vector list but gets no contribution from the other two."
                 : focused.id === "C"
-                  ? "C earns support from all three lists and finishes first, without leading the vector list."
-                  : "A leads the name list. Its lower vector placement puts it just behind C overall."}
+                  ? "C wins with support from all three lists, though it doesn't lead the vector list."
+                  : "A leads the name list, but its lower vector rank puts it just behind C."}
             </span>
           </>
         ) : (
           <>
             <span className={styles.equation}>score = Σ 1 / (60 + rank)</span>
             <span>
-              The same candidate can earn a contribution from each list. Missing
-              from a list means zero.
+              Each list can contribute to a candidate’s score. A missing
+              candidate gets zero from that list.
             </span>
           </>
         )}
@@ -728,14 +728,13 @@ export function VorpalRanking() {
       </div>
       <figcaption className={styles.caption} id={id + "-caption"}>
         <span>
-          This small example illustrates the three base lists. Graph ranks
-          name-matched candidates by how often other code references them. Ranks
-          and totals stay fixed while the light traces their contributions.
+          C wins without leading the vector list. Select a candidate to follow
+          its contributions. The graph list ranks name-matched candidates by how
+          often other code references them.
         </span>
         <span className={styles.note}>
-          Other enabled lists can also contribute. The optional neural reranker
-          then preserves the fused winner and reorders the remaining top
-          results.{" "}
+          Other enabled lists can contribute too. The optional neural reranker
+          keeps the fused winner and reorders the remaining top results.{" "}
           <a href="https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/index/src/lib.rs#L4328-L4365">
             See the fusion implementation.
           </a>

@@ -25,21 +25,21 @@ const stages = [
     detail: "Links across files",
     note: "Evidence for each link",
     description:
-      "Match references to definitions across files and record the evidence and confidence for each match.",
+      "Match references to definitions across files, recording evidence and confidence for each match.",
   },
   {
     title: "Index",
     detail: "Graph + search indexes",
     note: "Cached file results",
     description:
-      "Store the graph, cache the results for each file, and build search indexes for queries.",
+      "Store the graph, cache each file's results, and build search indexes.",
   },
   {
     title: "CLI / MCP",
     detail: "Query the code",
     note: "Agents + editors",
     description:
-      "Use the command line or an MCP server to find definitions, follow links, and read source code.",
+      "Find definitions, follow links, and read source through the command line or an MCP server.",
   },
 ];
 type Point = [number, number, number];
@@ -627,8 +627,8 @@ export function VorpalArchitecture({ description }: { description: string }) {
       <figcaption className={styles.caption} id={id + "-caption"}>
         <span>{description}</span>
         <span className={styles.note}>
-          Changed files are parsed again. Cached results from other files are
-          reused.
+          Vorpal reparses edited files and reuses cached results for files you
+          haven’t changed.
         </span>
       </figcaption>
     </figure>

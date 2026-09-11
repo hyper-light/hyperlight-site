@@ -27,10 +27,10 @@ const modes = {
     title: "Words become signed features.",
     steps: ["Split identifiers", "Two signed hashes", "Normalize the vector"],
     description:
-      "resolve_import_path and resolveImportPath split into the same three words. Each word contributes to two signed buckets in a 256-dimensional vector. The highlighted cells below correspond to this query’s actual buckets.",
+      "resolve_import_path and resolveImportPath split into the same three words. Each word contributes to two signed buckets in a 256-dimensional vector. The highlighted cells show this query’s buckets.",
     formula: "v[b] += sign(token)    →    v̂ = v / ‖v‖₂",
     detail:
-      "Code definitions use the name twice, followed by the signature and file basename. This measures shared words; it does not infer the meaning of an unfamiliar phrase.",
+      "Definition vectors use the name twice, then the signature and file basename. This matches shared words; it doesn't infer the meaning of an unfamiliar phrase.",
   },
   learned: {
     label: "Learned",
@@ -38,10 +38,10 @@ const modes = {
     title: "The repository teaches the vocabulary.",
     steps: ["Word + subword counts", "PPMI → SVD", "Weighted pooling"],
     description:
-      "Vorpal counts words and character fragments that occur together in definitions. PPMI measures their association; SVD produces a compact basis. At query time, the learned token vectors are pooled and normalized.",
+      "Vorpal measures which words and character fragments occur together using PPMI, then compresses those associations with SVD. Queries combine learned token vectors and normalize the result.",
     formula: "co-occurrence → PPMI → SVD → ABTT → uSIF → L2",
     detail:
-      "The dimension is selected from the corpus. Three-to-six-character fragments help with new identifiers. Graph relationships can also refine stored document vectors. No pretrained model download is needed.",
+      "The corpus determines the dimension. Three-to-six-character fragments help with new identifiers; graph relationships can refine stored document vectors. There's no pretrained model to download.",
   },
   neural: {
     label: "Neural",
@@ -49,10 +49,10 @@ const modes = {
     title: "Context changes the representation.",
     steps: ["Tokenize text", "Contextual encoder", "CLS pooling + L2"],
     description:
-      "A pretrained encoder processes tokens together. Vorpal takes the final CLS representation and normalizes it. Queries receive a search-specific prefix; background document embeddings can also include a leading comment and source text.",
+      "The pretrained encoder processes tokens together; Vorpal normalizes its final CLS representation. Queries get a search-specific prefix. Background document embeddings can include a leading comment and source text.",
     formula: "v̂ = L2(encoder(tokens)[CLS])    ·    768 dimensions",
     detail:
-      "The encoder can rerank retrieved candidates. A separate background index of document embeddings can introduce additional candidates. The f16 and f32 downloads use the same architecture, not different embedding methods.",
+      "The encoder can rerank retrieved candidates; a separate background document-embedding index can add candidates. The f16 and f32 downloads use the same architecture and embedding method.",
   },
 } as const;
 
@@ -548,9 +548,9 @@ export function VorpalEmbeddings() {
         </div>
       </div>
       <figcaption className={styles.caption}>
-        An illustration of each process, not a 3D projection of measured
-        embeddings. The lexical buckets are calculated from the example query;
-        learned and neural geometry is schematic. No model runs in your browser.
+        The lexical buckets come from the example query. Learned and neural
+        shapes illustrate the process; they aren’t measured embeddings. No model
+        runs in your browser.
       </figcaption>
     </figure>
   );

@@ -310,8 +310,8 @@ export function VorpalBenchmarks() {
       </div>
       <figcaption className={styles.caption} id={id + "-caption"}>
         <span>
-          Linear scale, starting at zero. Each pair has its own scale; compare
-          lengths within a pair.
+          The wait before your first code-graph query. Each pair has its own
+          zero-based linear scale; compare lengths within a pair.
         </span>
         <span className={styles.note}>
           Published September 7, 2026 · M5 Max · 18 cores · 128 GB RAM. Vorpal

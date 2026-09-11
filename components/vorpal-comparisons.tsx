@@ -254,13 +254,13 @@ function Bars({
               data-comparison-surface={`${index}-${part}`}
               d={d}
               fill={part === "skin" ? `url(#${id}-prism)` : "none"}
-                fillOpacity={best[index] ? ".14" : ".085"}
+              fillOpacity={best[index] ? ".14" : ".085"}
               stroke={part === "skin" ? "none" : `url(#${id}-prism)`}
               strokeOpacity={
                 part === "upper"
                   ? best[index]
-                      ? ".85"
-                      : ".65"
+                    ? ".85"
+                    : ".65"
                   : part === "lower"
                     ? ".3"
                     : ".16"
@@ -495,8 +495,8 @@ export function VorpalComparisons({ kind }: { kind: ComparisonKind }) {
       <figcaption className={styles.caption} id={id + "-caption"}>
         <span>
           {agents
-            ? "Linear scale from zero, held fixed across all four questions for each metric. Exact published values stay visible while bars change."
-            : "All scores use the same zero-to-one scale. The highlighted tier has the highest score for the selected corpus and metric."}
+            ? "Same question, three ways to reach the code. Compare the agent's time, tokens, cost, and turns. Each metric keeps the same zero-based scale across all four questions."
+            : "Which tier finds the code you need? The highlighted tier leads for the selected repository and metric. All scores share a zero-to-one scale."}
         </span>
         <span className={styles.note}>
           {agents

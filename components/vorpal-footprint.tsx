@@ -812,19 +812,18 @@ export function VorpalFootprint() {
       <RawResults id={id} />
       <figcaption className={styles.caption} id={id + "-caption"}>
         <span>
-          Fixed 4 GB RAM and 10 GB disk chart scales, not the machine’s
-          capacity. Cell area represents the published usage; moving light does
-          not change the measurement.
+          Filled cells show the memory and disk space used to keep this
+          repository searchable. The 4 GB RAM and 10 GB disk limits are fixed
+          chart scales, not the machine’s capacity.
         </span>
         <span>
-          RAM is the peak sampled after each of 30 stdio MCP round trips per
-          tool. Encoder runs include background embedding work. Disk covers one
-          committed index generation after warming search.
+          Peak RAM is sampled after each of 30 stdio MCP round trips per tool.
+          Encoder runs include background embedding. Disk covers one committed
+          index generation after warming search.
         </span>
         <span className={styles.note}>
-          Encoder files use another 274 MB (f16) or 547 MB (f32) on disk, shared
-          across repositories—not a separate copy per index.{" "}
-          <a href={footprintSource}>Published README results</a>.
+          Encoder files add 274 MB (f16) or 547 MB (f32) on disk, shared across
+          repositories. <a href={footprintSource}>Published README results</a>.
         </span>
       </figcaption>
     </figure>
