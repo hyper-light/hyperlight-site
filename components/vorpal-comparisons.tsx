@@ -508,7 +508,7 @@ export function VorpalComparisons({ kind }: { kind: ComparisonKind }) {
               (agents ? "#how-does-it-compare" : "#is-search-any-good")
             }
           >
-            Published README results
+            Benchmark results
           </a>
           .
         </span>

@@ -622,8 +622,8 @@ function RawResults({ id }: { id: string }) {
 }
 
 export function VorpalFootprint() {
-  const ref = useRef<HTMLElement>(null);
-  const [columns, setColumns] = useState(40);
+  // The chips belong to one rigid module; resize the illustration, not its PCB.
+  const columns = 40;
   const [kind, setKind] = useState<FootprintKind>("ram");
   const [tiers, setTiers] = useState({ ram: 0, storage: 0 });
   const [sampleIndex, setSampleIndex] = useState(0);
@@ -633,15 +633,6 @@ export function VorpalFootprint() {
   const view = footprintKinds[kind];
   const tier = tiers[kind];
   const measurement = sample[kind][tier];
-  useEffect(() => {
-    const figure = ref.current;
-    if (!figure) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setColumns(entry.contentRect.width < 500 ? 20 : 40);
-    });
-    observer.observe(figure);
-    return () => observer.disconnect();
-  }, []);
   const move = (direction: number) =>
     setSampleIndex(
       (current) =>
@@ -650,7 +641,6 @@ export function VorpalFootprint() {
     );
   return (
     <figure
-      ref={ref}
       className={styles.figure}
       data-vorpal-footprint=""
       data-footprint-kind={kind}
@@ -823,7 +813,7 @@ export function VorpalFootprint() {
         </span>
         <span className={styles.note}>
           Encoder files add 274 MB (f16) or 547 MB (f32) on disk, shared across
-          repositories. <a href={footprintSource}>Published README results</a>.
+          repositories. <a href={footprintSource}>Memory and storage results</a>.
         </span>
       </figcaption>
     </figure>

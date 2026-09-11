@@ -434,7 +434,7 @@ export function VorpalTgrep() {
           September 7, 2026 · Vorpal v0.9.0 and tgrep 1.0.4, built from source
           on the same machine and checkouts. Vorpal build times are the best of
           three; tgrep times are medians of three.{" "}
-          <a href={tgrepSource}>Published README results</a>.
+          <a href={tgrepSource}>Benchmark comparison</a>.
         </span>
       </figcaption>
     </figure>

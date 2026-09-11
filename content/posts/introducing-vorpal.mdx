@@ -51,7 +51,7 @@ vorpal search "stat manifest change detection" -k 5 --format json
 
 Suppose you're changing how Vorpal resolves imports. The first query finds callers of the `resolve_import_path` definition in `resolver.rs`; the path rules out other definitions with the same name. The next two find implementations of the extraction interface and code that detects changed files.
 
-The README records `resolve`, `OutlineExtractor`, and `FileStat` among the respective results. You can go straight to those definitions instead of working through a directory of possible matches. [CLI setup and examples.][getting-started]
+Vorpal returns `resolve` as a caller of `resolve_import_path`, `OutlineExtractor` as an implementation of `FileExtractor`, and `FileStat` for the change-detection search. [CLI examples.][getting-started]
 
 `vorpal index .` writes to `./.vorpal/index`. Queries read that location relative to your current directory. If you index a different directory, pass its index path with `--index`.
 
@@ -102,7 +102,7 @@ Two functions named `save` aren't interchangeable. To work out which one a call 
 
 The source doesn't always give us a definite answer. Vorpal marks results as `exact`, `constrained`, `heuristic`, or `unresolved`, so an agent can distinguish a known binding from a candidate it needs to check. [Resolver implementation.][resolver]
 
-This work is language-specific. Compiling a grammar into the binary gives us a parser, not complete resolution for that language. The [language matrix][languages] records what is actually extracted and resolved.
+This work is language-specific. Compiling a grammar into the binary gives us a parser, not complete resolution for that language. [Language support.][languages]
 
 ### Store the graph
 
@@ -207,7 +207,7 @@ Vorpal uses **zero-based ranks**, so first place contributes `1/60`. A definitio
 
 The neural reranker keeps the fused top result and reorders the remaining candidates. It can't find a definition that's missing from the candidate set. The separate background embedding index can retrieve additional candidates.
 
-The encoder adds a download, memory use, and query time. In the README's quality runs, it improves results on CPython and Vorpal's own repository but scores lower on the kernel. Those runs precede background embedding fill, and the default and optional tiers were measured on different days.
+The encoder adds a download, memory use, and query time. In our tests, it improved results on CPython and Vorpal but scored lower on the kernel. [Retrieval results.][search-quality]
 
 To test which tier works best on your code, put one `query => expected-name-or-path` pair per line in a file, then run:
 
@@ -223,7 +223,7 @@ On the Linux kernel, Vorpal builds an **8.89-million-node graph in 8.1 seconds**
 
 We also measured updates, queries, and the time and cost of answering questions through an agent.
 
-All results come from the [README benchmarks][readme] on an Apple M5 Max with 18 cores and 128 GB RAM, macOS 26.4.1, and rustc 1.98.0. The main indexing and competitor comparisons used v0.9.0 on September 7, 2026. Broader language and optional-tier results include September 5–6 runs; the agent experiments use v0.8.3. The kernel checkout is `1590cf032971`, CPython is `b86a41cbf63`, and the README pins the other repositories too.
+We ran these benchmarks on an Apple M5 Max with 18 cores and 128 GB RAM, macOS 26.4.1, and rustc 1.98.0. The main indexing and competitor comparisons used v0.9.0 on September 7, 2026. Broader language and optional-tier results include September 5–6 runs; the agent experiments use v0.8.3. The kernel checkout is `1590cf032971`, and CPython is `b86a41cbf63`. [Test setup and repository revisions.][readme]
 
 Here, “cold” means building a new index, not flushing the operating system's file cache. Vorpal's cold indexing times are the best of three runs on a quiet machine; tgrep's are medians of three. CLI times include process startup. Daemon times measure the round trip from the client to an already-running process.
 
@@ -295,7 +295,7 @@ These full graph builds cover more languages and repository sizes. “Files pars
 | Vue | Vue / TS | 626 | 11,191 | 0.1 s | 0.01 s |
 | Vorpal, with vendored grammars | Rust / generated C | 1,917 | 80,611 | 6.9 s | 0.02 s |
 
-Vorpal's own checkout has only 1,917 parsed files, yet takes 6.9 seconds. One is a 33 MB generated `parser.c`. Other files finish in parallel, but the build still has to wait for that parser. LLVM spreads its work across more than 86,000 parsed files and finishes in 7.3 seconds. File count alone won't predict build time; one huge file can dominate it. The [README][performance] pins commits and dates for the September 5–6 measurements alongside the September 7 kernel, CPython, and Vorpal runs.
+Vorpal's own checkout has only 1,917 parsed files, yet takes 6.9 seconds. One is a 33 MB generated `parser.c`. Other files finish in parallel, but the build still has to wait for that parser. LLVM spreads its work across more than 86,000 parsed files and finishes in 7.3 seconds. File count alone won't predict build time; one huge file can dominate it. [Repository revisions and test dates.][performance]
 
 ### Indexed text search and structural search
 
@@ -391,7 +391,7 @@ MRR measures how high the first relevant result appears. Recall@5 measures how m
 
 On CPython, the encoder raises NDCG@10 by about **15%** and recall@5 by **28%** over the default: more of the relevant code reaches the first five results. Vorpal's own repository gains about **13%** on NDCG@10. On the kernel, the default leads on NDCG and MRR; the learned tier gains a little recall. The encoder doesn't justify its extra cost for those kernel queries.
 
-These measurements precede the encoder's background embedding fill. In those runs, descriptive kernel queries and paraphrases remained weak; the reranker can't fix a missing candidate. The default column is from September 7, after body-text candidates were added; learned and encoder columns are from September 6. These are the published configurations at those stages. Use `vorpal tune` to test your own questions. [Retrieval results and labels.][search-quality]
+These measurements precede the encoder's background embedding fill. In those runs, descriptive kernel queries and paraphrases remained weak; the reranker can't fix a missing candidate. The default column is from September 7, after body-text candidates were added; learned and encoder columns are from September 6. Use `vorpal tune` to test your own questions. [Retrieval results and labels.][search-quality]
 
 ### What an agent saves
 

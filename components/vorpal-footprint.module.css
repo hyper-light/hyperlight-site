@@ -154,7 +154,8 @@
 }
 .grid {
   display: block;
-  width: 75%;
+  /* Fill narrow plots, easing back to the 75% desktop size without a jump. */
+  width: clamp(75%, calc(35% + 300px), 100%);
   height: auto;
   margin-inline: auto;
   pointer-events: none;
@@ -272,9 +273,11 @@
   }
   .chartSection {
     padding-inline: 17px;
+    padding-block: 18px;
   }
   .chartHeading {
     gap: 8px;
+    margin-bottom: 16px;
     font-size: 10px;
   }
   .raw > summary,

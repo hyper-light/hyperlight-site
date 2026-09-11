@@ -25,6 +25,38 @@ const published = [
 
 const tierNames = ["Default", "Learned", "Learned + f16", "Learned + f32"];
 
+test("RAM and disk preserve their hardware proportions on narrow screens", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const { figure, errors } = await openFootprint(page);
+  for (const metric of ["RAM", "Disk"] as const) {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await selectMetric(figure, metric);
+    const grid = figure.locator("[data-footprint-grid]");
+    const ratio = () => grid.evaluate((element) => {
+      const box = (element as SVGSVGElement).getBBox();
+      return box.width / box.height;
+    });
+    const desktopRatio = await ratio();
+    for (const width of [768, 390, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await grid.evaluate(() => new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }));
+      await grid.screenshot({
+        path: testInfo.outputPath(`hardware-${metric.toLowerCase()}-${width}.png`),
+      });
+      expect.soft(
+        await ratio(),
+        `${metric} at ${width}px should scale the hardware, not reshape it`,
+      ).toBeCloseTo(desktopRatio, 1);
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
 test("resource and tier tabs show one module without shifting the article or adding an inner scroller", async ({
   page,
 }, testInfo) => {
@@ -41,15 +73,7 @@ test("resource and tier tabs show one module without shifting the article or add
     ? [320, 390]
     : [1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await expect
-      .poll(() =>
-        figure.evaluate(
-          (element) =>
-            element.getAttribute("data-footprint-columns") ===
-            (element.getBoundingClientRect().width < 500 ? "20" : "40"),
-        ),
-      )
-      .toBe(true);
+    await expect(figure).toHaveAttribute("data-footprint-columns", "40");
     await selectMetric(figure, "RAM");
     await selectTier(figure, 0);
     const ram = await read();
@@ -366,15 +390,19 @@ test("projected cells retain a twenty-five MB unit and attached partial fills", 
     for (let tier = 0; tier < tiers; tier++) {
       await selectTier(figure, tier);
       const grid = grids;
-      const relativeWidth = await grid.evaluate(
-        (element) =>
-          element.getBoundingClientRect().width /
-          element.parentElement!.getBoundingClientRect().width,
-      );
-      expect(
-        relativeWidth,
-        "hardware illustrations should be 25% smaller than the tier width",
-      ).toBeCloseTo(0.75, 2);
+      const sizing = await grid.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        available: element.parentElement!.getBoundingClientRect().width,
+      }));
+      const relativeWidth = sizing.width / sizing.available;
+      if (sizing.available >= 750) {
+        expect(relativeWidth, "keep the 25% reduction in wide plots").toBeCloseTo(0.75, 2);
+      } else if (sizing.available <= 460) {
+        expect(relativeWidth, "use the available width on small screens").toBeCloseTo(1, 2);
+      } else {
+        expect(relativeWidth).toBeGreaterThanOrEqual(0.75);
+        expect(relativeWidth).toBeLessThanOrEqual(1);
+      }
       await expect(grid.locator("[data-footprint-cell]")).toHaveCount(count);
       const cells = await grid
         .locator("[data-footprint-cell]")

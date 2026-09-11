@@ -315,11 +315,11 @@ export function VorpalBenchmarks() {
         </span>
         <span className={styles.note}>
           Published September 7, 2026 · M5 Max · 18 cores · 128 GB RAM. Vorpal
-          v0.9.0; cbm 997d087, full mode. See the{" "}
+          v0.9.0; cbm 997d087, full mode.{" "}
           <a href="https://github.com/hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md#how-does-it-compare">
-            README comparison
-          </a>{" "}
-          for measurements and methods.
+            Measurements and methods
+          </a>
+          .
         </span>
       </figcaption>
     </figure>
