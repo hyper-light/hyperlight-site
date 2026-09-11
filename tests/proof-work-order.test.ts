@@ -118,7 +118,9 @@ test("posting moves a visible request into the ledger before writing the station
     assert.ok(Math.hypot(b[0] - a[0], b[1] - a[1]) > 25);
     const envelope = pathPoints(arriving, "post-direction-probe");
     assert.ok(
-      Math.max(...envelope.map(([x]) => x)) - Math.min(...envelope.map(([x]) => x)) > 8,
+      Math.max(...envelope.map(([x]) => x)) -
+        Math.min(...envelope.map(([x]) => x)) >
+        8,
       "the request is a visible packet, not a tiny probe",
     );
     const writing = workOrderFrame(0, 0.58, portrait);
@@ -126,57 +128,105 @@ test("posting moves a visible request into the ledger before writing the station
     const front = pathPoints(writing, "claim-post-write")[1];
     const complete = pathPoints(written, "claim-post-write")[1];
     assert.ok(Math.hypot(complete[0] - front[0], complete[1] - front[1]) > 150);
-    assert.deepEqual(pathPoints(early, "claim-c17-skin"), pathPoints(written, "claim-c17-skin"));
+    assert.deepEqual(
+      pathPoints(early, "claim-c17-skin"),
+      pathPoints(written, "claim-c17-skin"),
+    );
   }
 });
 
 test("acquiring writes the receipt inside the ledger before returning an acknowledgement", () => {
   for (const portrait of [false, true]) {
     const earlyRequest = workOrderFrame(0, 1.04, portrait);
-    const deliveredRequest = workOrderFrame(0, 1.30, portrait);
+    const deliveredRequest = workOrderFrame(0, 1.3, portrait);
     const a = pathPoints(earlyRequest, "acquire-direction-probe")[0];
     const b = pathPoints(deliveredRequest, "acquire-direction-probe")[0];
     assert.ok(Math.hypot(b[0] - a[0], b[1] - a[1]) > 25);
 
     const starting = workOrderFrame(0, 1.38, portrait);
-    const finishing = workOrderFrame(0, 1.70, portrait);
+    const finishing = workOrderFrame(0, 1.7, portrait);
     const span = (frame: ReturnType<typeof workOrderFrame>, id: string) => {
       const xs = pathPoints(frame, id).map(([x]) => x);
       return Math.max(...xs) - Math.min(...xs);
     };
-    assert.ok(span(finishing, "work-receipt-skin") - span(starting, "work-receipt-skin") > 140);
-    assert.ok(span(finishing, "receipt-write-progress") - span(starting, "receipt-write-progress") > 140);
-    assert.deepEqual(pathPoints(starting, "receipt-direction-probe"), pathPoints(finishing, "receipt-direction-probe"));
+    assert.ok(
+      span(finishing, "work-receipt-skin") -
+        span(starting, "work-receipt-skin") >
+        140,
+    );
+    assert.ok(
+      span(finishing, "receipt-write-progress") -
+        span(starting, "receipt-write-progress") >
+        140,
+    );
+    assert.deepEqual(
+      pathPoints(starting, "receipt-direction-probe"),
+      pathPoints(finishing, "receipt-direction-probe"),
+    );
     for (const frame of [starting, finishing]) {
       const ledger = pathPoints(frame, "ledger-skin");
       for (const point of pathPoints(frame, "work-receipt-skin"))
-        assert.ok(clearance(ledger, point) > 10, "the ledger materializes its own receipt");
+        assert.ok(
+          clearance(ledger, point) > 10,
+          "the ledger materializes its own receipt",
+        );
     }
     const ack = workOrderFrame(0, 1.98, portrait);
     const start = pathPoints(finishing, "receipt-direction-probe")[0];
     const end = pathPoints(ack, "receipt-direction-probe")[0];
     assert.ok(Math.hypot(end[0] - start[0], end[1] - start[1]) > 25);
-    assert.deepEqual(pathPoints(earlyRequest, "claim-c17-skin"), pathPoints(ack, "claim-c17-skin"));
+    assert.deepEqual(
+      pathPoints(earlyRequest, "claim-c17-skin"),
+      pathPoints(ack, "claim-c17-skin"),
+    );
   }
 });
 
 test("only the current exchange flows and ledger state changes follow completed writes", () => {
   for (const portrait of [false, true]) {
     const opacity = (selection: number, route: string) =>
-      workOrderFrame(0, selection, portrait).paths.find(({ id }) => id === route + "-flow")!.opacity;
+      workOrderFrame(0, selection, portrait).paths.find(
+        ({ id }) => id === route + "-flow",
+      )!.opacity;
     for (const selection of [0, 1, 2])
-      for (const route of ["post-direction", "acquire-direction", "receipt-direction"])
-        assert.equal(opacity(selection, route), 0, "settled actions do not keep exchanging traffic");
+      for (const route of [
+        "post-direction",
+        "acquire-direction",
+        "receipt-direction",
+      ])
+        assert.equal(
+          opacity(selection, route),
+          0,
+          "settled actions do not keep exchanging traffic",
+        );
     assert.ok(opacity(0.25, "post-direction") > 0.7);
     assert.equal(opacity(0.25, "acquire-direction"), 0);
     assert.equal(opacity(1.55, "receipt-direction"), 0);
     assert.ok(opacity(1.87, "receipt-direction") > 0.7);
-    assert.equal(text(workOrderFrame(0, 0.8, portrait), "claim-state"), "Generated");
-    assert.equal(text(workOrderFrame(0, 0.98, portrait), "claim-state"), "Posted");
-    assert.equal(text(workOrderFrame(0, 1.7, portrait), "claim-state"), "Posted");
-    assert.equal(text(workOrderFrame(0, 1.75, portrait), "claim-state"), "Received");
-    assert.equal(text(workOrderFrame(0, 1.7, portrait), "receipt-value"), "Not acquired");
-    assert.equal(text(workOrderFrame(0, 1.75, portrait), "receipt-value"), "Generation 1 · Parser agent");
+    assert.equal(
+      text(workOrderFrame(0, 0.8, portrait), "claim-state"),
+      "Generated",
+    );
+    assert.equal(
+      text(workOrderFrame(0, 0.98, portrait), "claim-state"),
+      "Posted",
+    );
+    assert.equal(
+      text(workOrderFrame(0, 1.7, portrait), "claim-state"),
+      "Posted",
+    );
+    assert.equal(
+      text(workOrderFrame(0, 1.75, portrait), "claim-state"),
+      "Received",
+    );
+    assert.equal(
+      text(workOrderFrame(0, 1.7, portrait), "receipt-value"),
+      "Not acquired",
+    );
+    assert.equal(
+      text(workOrderFrame(0, 1.75, portrait), "receipt-value"),
+      "Generation 1 · Parser agent",
+    );
   }
 });
 
@@ -219,19 +269,35 @@ test("work-order paths and label identities stay stable and fit both process lay
   }
 });
 
-test("request probes and ambient geometry stay continuous without moving the stored claim", () => {
+test("request transfers and record writes stay continuous without moving the stored claim", () => {
   for (const portrait of [false, true]) {
     let previous = workOrderFrame(0, 0, portrait);
-    for (let sample = 1; sample <= 180; sample++) {
-      const next = workOrderFrame(sample / 60, sample / 90, portrait);
+    // Match the 2.4-second smoothstep playback; publication writes cross the card.
+    for (let sample = 1; sample <= 288; sample++) {
+      const raw = sample / 144,
+        step = Math.floor(raw),
+        phase = raw - step;
+      const next = workOrderFrame(
+        sample / 60,
+        step + phase * phase * (3 - 2 * phase),
+        portrait,
+      );
       assert.equal(
         text(next, "claim-requirements"),
         text(previous, "claim-requirements"),
       );
       next.paths.forEach((path, index) => {
         const before = coordinates(previous.paths[index].d);
+        const write =
+          /^(claim-post-|work-receipt-|receipt-write-|parser-ack-ready)/.test(
+            path.id,
+          );
+        const packet = /-direction-(probe|packet-rib-\d)$/.test(path.id);
+        // Only intentional transfers get a larger travel budget. Ledger and C17
+        // geometry retain the original ambient bound; no wrap/reset is allowed.
+        const limit = write ? 8 : packet ? 4 : 1.7;
         coordinates(path.d).forEach((value, axis) =>
-          assert.ok(Math.abs(value - before[axis]) < 1.7, path.id),
+          assert.ok(Math.abs(value - before[axis]) < limit, path.id),
         );
       });
       previous = next;

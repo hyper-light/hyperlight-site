@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/barlow/Barlow-Regular.woff2") format("woff2");
+}
+
 .figure {
   container-type: inline-size;
   position: relative;
@@ -184,21 +192,39 @@
   stroke-linecap: round;
   opacity: 0.9;
 }
+.channelLabel,
+.rankLabel,
+.candidateLabel,
+.outputLabel {
+  font-family: "Barlow", var(--font-sans), sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+  font-variant-numeric: lining-nums tabular-nums;
+}
 .channelLabel {
-  composes: legend from "./diagram-type.module.css";
+  fill: #9bafb7;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .rankLabel {
-  composes: index from "./diagram-type.module.css";
+  fill: #8fa3af;
+  font-size: 11px;
+  letter-spacing: 0;
 }
-.candidateLabel {
-  composes: identifier from "./diagram-type.module.css";
-}
+.candidateLabel,
 .outputLabel {
-  composes: identifier from "./diagram-type.module.css";
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 .formulaLabel {
   composes: label from "./diagram-type.module.css";
+  /* Keep the mathematical register explicit: Barlow has no Greek capital Σ.
+     The already-loaded mono face covers the complete, unchanged expression. */
+  fill: #aab2c3;
   font-size: 10.5px;
+  font-weight: 300;
+  letter-spacing: 0.035em;
 }
 .art [data-candidate] {
   transition: opacity 220ms ease;
@@ -296,15 +322,20 @@
 }
 @container (max-width: 560px) {
   .channelLabel {
-    font-size: 10px;
+    font-size: 11.5px;
   }
 }
 @container (max-width: 420px) {
+  .channelLabel {
+    font-size: 12.5px;
+  }
   .rankLabel {
-    font-size: 11px;
+    font-size: 13px;
   }
   .candidateLabel,
-  .outputLabel,
+  .outputLabel {
+    font-size: 14px;
+  }
   .formulaLabel {
     font-size: 12px;
   }

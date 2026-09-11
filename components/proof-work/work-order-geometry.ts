@@ -14,16 +14,27 @@ function probe(paths: ProofPath[], id: string, phase: number) {
   );
   const t = clamp(phase),
     u = 1 - t;
+  const active = t > 0 && t < 1 ? Math.sin(t * Math.PI) : 0;
+  paths.find((path) => path.id === id + "-flow")!.opacity = active * 0.9;
   const x =
     u ** 3 * p[0] + 3 * u * u * t * p[2] + 3 * u * t * t * p[4] + t ** 3 * p[6];
   const y =
     u ** 3 * p[1] + 3 * u * u * t * p[3] + 3 * u * t * t * p[5] + t ** 3 * p[7];
-  const dx = 3 * u * u * (p[2] - p[0]) + 6 * u * t * (p[4] - p[2]) + 3 * t * t * (p[6] - p[4]);
-  const dy = 3 * u * u * (p[3] - p[1]) + 6 * u * t * (p[5] - p[3]) + 3 * t * t * (p[7] - p[5]);
+  const dx =
+    3 * u * u * (p[2] - p[0]) +
+    6 * u * t * (p[4] - p[2]) +
+    3 * t * t * (p[6] - p[4]);
+  const dy =
+    3 * u * u * (p[3] - p[1]) +
+    6 * u * t * (p[5] - p[3]) +
+    3 * t * t * (p[7] - p[5]);
   const length = Math.hypot(dx, dy) || 1;
-  const at = (along: number, across: number) => [x + (dx * along - dy * across) / length, y + (dy * along + dx * across) / length];
+  const at = (along: number, across: number) => [
+    x + (dx * along - dy * across) / length,
+    y + (dy * along + dx * across) / length,
+  ];
   const points = [at(-11, -5), at(11, -5), at(11, 5), at(-11, 5), at(-11, -5)];
-  const opacity = 0.16 + Math.sin(t * Math.PI) * 0.84;
+  const opacity = 0.16 + active * 0.84;
   paths.push({
     id: id + "-probe",
     d: points
@@ -36,7 +47,8 @@ function probe(paths: ProofPath[], id: string, phase: number) {
     tone: "pending",
   });
   for (let rib = 0; rib < 3; rib++) {
-    const a = at(-5 + rib * 5, -3), b = at(-5 + rib * 5, 3);
+    const a = at(-5 + rib * 5, -3),
+      b = at(-5 + rib * 5, 3);
     paths.push({
       id: `${id}-packet-rib-${rib}`,
       d: `M${a.map((n) => n.toFixed(2)).join(" ")} L${b.map((n) => n.toFixed(2)).join(" ")}`,
@@ -47,9 +59,38 @@ function probe(paths: ProofPath[], id: string, phase: number) {
   }
 }
 
-function band(scene: Scene, id: string, x: number, y: number, width: number, height: number, opacity: number) {
-  scene.line(id, [[x, y], [x + width, y], [x + width, y + height], [x, y + height], [x, y]], "glass", opacity, "pending");
-  scene.line(id + "-edge", [[x, y], [x + width, y]], "edge", opacity, "pending");
+function band(
+  scene: Scene,
+  id: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  opacity: number,
+) {
+  scene.line(
+    id,
+    [
+      [x, y],
+      [x + width, y],
+      [x + width, y + height],
+      [x, y + height],
+      [x, y],
+    ],
+    "glass",
+    opacity,
+    "pending",
+  );
+  scene.line(
+    id + "-edge",
+    [
+      [x, y],
+      [x + width, y],
+    ],
+    "edge",
+    opacity,
+    "pending",
+  );
 }
 
 /** The ledger owns C17 in every state; participants exchange requests, not originals. */
@@ -114,7 +155,16 @@ export function workOrderFrame(
     }),
   );
   [
-    ["parser-action", selection >= 1.99 ? "Receipt ack" : selection >= 1.74 ? "Awaiting ack" : selection > 1.02 ? "Requests receipt" : ["Waits for post", "Reads C17"][stage]],
+    [
+      "parser-action",
+      selection >= 1.99
+        ? "Receipt ack"
+        : selection >= 1.74
+          ? "Awaiting ack"
+          : selection > 1.02
+            ? "Requests receipt"
+            : ["Waits for post", "Reads C17"][stage],
+    ],
     ["parser-receipt", stage === 2 ? "Generation 1" : "No receipt yet"],
     ["parser-responsibility", stage === 2 ? "Responsible" : "Via the ledger"],
   ].forEach(([id, text], index) =>
@@ -223,29 +273,74 @@ export function workOrderFrame(
   );
 
   const postWrite = progress(selection, 0.48, 0.96);
-  band(scene, "claim-post-write", cx + 14, cy + 160, (width - 28) * postWrite, 6, 0.22 + postWrite * 0.65);
-  band(scene, "claim-post-scan", cx + 14 + (width - 40) * postWrite, cy + 56, 12, 72, Math.sin(postWrite * Math.PI) * 0.62);
+  band(
+    scene,
+    "claim-post-write",
+    cx + 14,
+    cy + 160,
+    (width - 28) * postWrite,
+    6,
+    0.22 + postWrite * 0.65,
+  );
+  band(
+    scene,
+    "claim-post-scan",
+    cx + 14 + (width - 40) * postWrite,
+    cy + 56,
+    12,
+    72,
+    Math.sin(postWrite * Math.PI) * 0.62,
+  );
 
   const ry = cy + 194;
   const receiptWrite = progress(selection, 1.34, 1.74);
+  // The empty slot's lettering yields to the arriving sheet, then its issued
+  // fields appear on the completed surface instead of floating over a moving edge.
+  const receiptInk =
+    1 - progress(receiptWrite, 0, 0.18) + progress(receiptWrite, 0.88, 1);
   const receiptWidth = 26 + (width - 26) * receiptWrite;
   box("receipt-slot", cx, ry, width, 86, { opacity: 0.19 });
   box("work-receipt", cx + width - receiptWidth, ry, receiptWidth, 86, {
     tone: "pending",
     opacity: 0.1 + receiptWrite * 0.82,
   });
-  band(scene, "receipt-write-progress", cx + width - 16 - (width - 32) * receiptWrite, ry + 70, (width - 32) * receiptWrite, 6, 0.2 + receiptWrite * 0.7);
-  band(scene, "receipt-write-front", cx + width - receiptWidth + 5, ry + 11, 7, 50, Math.sin(receiptWrite * Math.PI) * 0.65);
-  band(scene, "parser-ack-ready", parser.x + 25, parser.y + parser.h - 18, (parser.w - 50) * progress(selection, 1.93, 2), 5, 0.65);
+  band(
+    scene,
+    "receipt-write-progress",
+    cx + width - 16 - (width - 32) * receiptWrite,
+    ry + 70,
+    (width - 32) * receiptWrite,
+    6,
+    0.2 + receiptWrite * 0.7,
+  );
+  band(
+    scene,
+    "receipt-write-front",
+    cx + width - receiptWidth + 5,
+    ry + 11,
+    7,
+    50,
+    Math.sin(receiptWrite * Math.PI) * 0.65,
+  );
+  band(
+    scene,
+    "parser-ack-ready",
+    parser.x + 25,
+    parser.y + parser.h - 18,
+    (parser.w - 50) * progress(selection, 1.76, 1.99),
+    5,
+    0.65,
+  );
   label("receipt-title", "Execution receipt", cx + 22, ry + 27, {
     kind: "label",
+    opacity: receiptInk,
   });
   label(
     "receipt-value",
     stage === 2 ? "Generation 1 · Parser agent" : "Not acquired",
     cx + 22,
     ry + 53,
-    { kind: "small", tone: "pending" },
+    { kind: "small", tone: "pending", opacity: receiptInk },
   );
   label(
     "source-after-post",

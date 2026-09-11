@@ -461,6 +461,11 @@ function RankingArt({
       focusable="false"
     >
       <defs>
+        <linearGradient id={id + "-lettering"} x1="0" y1="0" x2=".25" y2="1">
+          <stop stopColor="#c2d4d6" />
+          <stop offset=".48" stopColor="#aebdc9" />
+          <stop offset="1" stopColor="#a89caf" />
+        </linearGradient>
         <linearGradient
           id={id + "-fin"}
           data-ranking-reflection=""
@@ -557,6 +562,11 @@ function RankingArt({
           data-candidate={text.candidate}
           x={text.x}
           y={text.y}
+          style={
+            text.kind === "candidate" || text.kind === "output"
+              ? { fill: `url(#${id}-lettering)` }
+              : undefined
+          }
           textAnchor={
             text.id === "fusion" ||
             text.id === "result" ||

@@ -429,15 +429,18 @@ export function processScene(time: number, portrait: boolean) {
     label(id + "-role", role, x + 25, y + 50, { kind: "heading" });
     // An open, keyed ID rail is machined into the front laminate. Its recessed
     // lower edge supports the silkscreen name without making a separate badge.
+    // The ledger inscription terminates beside its spine; actor terminals have
+    // a full-width control rail ending at a small connector registration.
+    const railEnd = isLedger ? x + 112 : x + width - 17;
     line(
       id + "-id-register",
       [
-        [x + 19, y + 13],
-        [x + 15, y + 17],
+        [x + (isLedger ? 8 : 19), y + 13],
+        [x + 15, y + (isLedger ? 13 : 17)],
         [x + 15, y + 30],
         [x + 19, y + 34],
-        [x + width - 21, y + 34],
-        [x + width - 17, y + 30],
+        [railEnd - 4, y + 34],
+        [railEnd, y + 30],
       ],
       "fine",
       0.42,
@@ -446,10 +449,10 @@ export function processScene(time: number, portrait: boolean) {
       id + "-id-recess",
       [
         [x + 19, y + 34],
-        [x + width - 21, y + 34],
-        [x + width - 17, y + 30],
-        [x + width - 17, y + 32],
-        [x + width - 21, y + 36],
+        [railEnd - 4, y + 34],
+        [railEnd, y + 30],
+        [railEnd, y + 32],
+        [railEnd - 4, y + 36],
         [x + 19, y + 36],
         [x + 19, y + 34],
       ],
@@ -460,12 +463,40 @@ export function processScene(time: number, portrait: boolean) {
     for (let tick = 0; tick < 3; tick++) {
       line(
         `${id}-id-key-${tick}`,
-        [
-          [x + width - 17, y + 15 + tick * 4],
-          [x + width - 13, y + 15 + tick * 4],
-        ],
+        isLedger
+          ? [
+              [x + width - 4, y + 13 + tick * 6],
+              [x + width - 12, y + 13 + tick * 6],
+              [x + width - 12, y + 16 + tick * 6],
+              [x + width - 4, y + 16 + tick * 6],
+            ]
+          : [
+              [x + width - 17, y + 15 + tick * 4],
+              [x + width - 13, y + 15 + tick * 4],
+            ],
         "fine",
         0.34,
+      );
+    }
+    if (isLedger) {
+      paths.push({
+        id: id + "-title-binding",
+        d: `M${coord(point([x - 9, y + 30], 50))} L${coord(point([x + 15, y + 30]))}`,
+        kind: "fine",
+        opacity: 0.32,
+      });
+    } else {
+      line(
+        id + "-terminal-port",
+        [
+          [x + width - 19, y + 12],
+          [x + width - 11, y + 12],
+          [x + width - 11, y + 27],
+          [x + width - 19, y + 27],
+          [x + width - 19, y + 12],
+        ],
+        "fine",
+        0.25,
       );
     }
     line(
@@ -551,6 +582,9 @@ export function processScene(time: number, portrait: boolean) {
               y >= surface.y &&
               y <= surface.y + surface.height,
           )
+          // Equal-size surfaces paint in insertion order: the newer sheet owns
+          // its ink once it fills a placeholder slot beneath it.
+          .reverse()
           .sort((a, b) => a.width * a.height - b.width * b.height)[0];
         return {
           ...item,

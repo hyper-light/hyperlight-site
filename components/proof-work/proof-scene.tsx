@@ -143,6 +143,9 @@ export function ProofScene({
       nodes &&
       (rebound ||
         (paused && selectionChanged) ||
+        // Keep the CSS-hidden responsive counterpart current without replaying
+        // an old lifecycle when a resize makes it visible.
+        (selectionChanged && svg.getClientRects().length === 0) ||
         window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     ) {
       nodes.selection = selection;

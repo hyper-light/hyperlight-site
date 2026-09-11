@@ -59,7 +59,7 @@ test("all proof scenes use instrument lettering without changing article typogra
   });
 });
 
-test("Vorpal diagram names, identifiers, tokens and chart labels share the wireframe lettering", async ({
+test("Vorpal architecture, tokens and chart labels retain their wireframe lettering", async ({
   page,
 }, testInfo) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -68,7 +68,6 @@ test("Vorpal diagram names, identifiers, tokens and chart labels share the wiref
   for (const selector of [
     "[data-architecture-flow]",
     "[data-embedding-scene]",
-    "[data-ranking-art]",
   ]) {
     const svg = page.locator(`${selector}:visible`);
     await expectDiagramLettering(svg.locator("text"));
@@ -92,6 +91,58 @@ test("Vorpal diagram names, identifiers, tokens and chart labels share the wiref
   await expectDiagramLettering(
     page.locator('[data-vorpal-footprint] [class*="tierHeading"] h5'),
   );
+});
+
+test("ranking uses normal-width shaded identifiers while keeping its formula and controls distinct", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/blog/introducing-vorpal");
+  const figure = page.locator("[data-vorpal-ranking]");
+  const svg = figure.locator("[data-ranking-art]:visible");
+  await svg.scrollIntoViewIfNeeded();
+  await page.evaluate(() => document.fonts.ready);
+  expect(
+    await page.evaluate(() =>
+      Array.from(document.fonts).some(
+        (font) => font.family === "Barlow" && font.status === "loaded",
+      ),
+    ),
+  ).toBe(true);
+  for (const label of await svg
+    .locator('text:not([data-ranking-label="fusion"])')
+    .all()) {
+    await expect(label).toHaveCSS("font-family", /"?Barlow"?,/);
+    await expect(label).toHaveCSS("font-weight", "400");
+  }
+  const formula = svg.locator('[data-ranking-label="fusion"]');
+  await expect(formula).toHaveText("Σ 1 / (60 + r)");
+  await expect(formula).toHaveCSS("font-family", /Geist Mono Variable/);
+  await expect(formula).toHaveCSS("font-weight", "300");
+  for (const label of await svg
+    .locator(
+      '[data-ranking-label^="candidate-"], [data-ranking-label^="output-"]:not([data-ranking-label^="output-rank-"])',
+    )
+    .all()) {
+    const stops = await label.evaluate((element) => {
+      const fill = element.style.fill;
+      const id = fill.slice(fill.lastIndexOf("#") + 1).replace(/["')]/g, "");
+      const gradient = document.getElementById(id);
+      return Array.from(gradient?.querySelectorAll("stop") ?? [], (stop) =>
+        stop.getAttribute("stop-color"),
+      );
+    });
+    expect(stops).toEqual(["#c2d4d6", "#aebdc9", "#a89caf"]);
+  }
+  await expect(figure.getByRole("heading").first()).toHaveCSS(
+    "font-family",
+    /Geist Variable/,
+  );
+  for (const button of await figure.getByRole("button").all())
+    await expect(button).toHaveCSS("font-family", /Geist Variable/);
+  await svg.screenshot({
+    path: testInfo.outputPath("ranking-type-and-hue.png"),
+  });
 });
 
 test("monospaced chart names leave room for their values on narrow screens", async ({
@@ -141,4 +192,131 @@ test("monospaced chart names leave room for their values on narrow screens", asy
       ),
     ).toBe(true);
   }
+});
+
+test("record lettering is attached to the glass plane rather than a camera-facing overlay", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/blog/agentic-proof-of-work");
+  const figure = page.locator('[data-proof-figure="work-order"]');
+  const labels = figure.locator(
+    "[data-proof-scene]:visible [data-proof-surface]",
+  );
+  const planes = await labels.evaluateAll((elements) =>
+    elements.map((element) => {
+      const label = element as SVGTextElement;
+      const matrix = label.transform.baseVal.consolidate()?.matrix;
+      const x = label.x.baseVal.getItem(0).value;
+      const y = label.y.baseVal.getItem(0).value;
+      const transformed = new DOMPoint(x, y).matrixTransform(matrix);
+      return {
+        id: label.dataset.proofLabel,
+        transform: label.getAttribute("transform"),
+        scaleX: matrix?.a,
+        shear: matrix?.c,
+        anchorError: Math.hypot(transformed.x - x, transformed.y - y),
+      };
+    }),
+  );
+  expect(planes.length).toBeGreaterThan(10);
+  for (const plane of planes) {
+    expect(plane.transform, plane.id).toMatch(/^matrix\(/);
+    expect(plane.scaleX, plane.id).toBeGreaterThan(0.7);
+    expect(plane.scaleX, plane.id).toBeLessThan(1);
+    expect(Math.abs(plane.shear ?? 0), plane.id).toBeGreaterThan(0.01);
+    expect(plane.anchorError, plane.id).toBeLessThan(0.1);
+  }
+  await expect(
+    figure.locator(
+      '[data-proof-scene]:visible [data-proof-label="post-label"]',
+    ),
+  ).not.toHaveAttribute("transform");
+});
+
+test("claim state changes visibly transfer, write and acknowledge in order", async ({
+  page,
+}, testInfo) => {
+  await page.clock.install();
+  await page.goto("/blog/agentic-proof-of-work");
+  await page.evaluate(() => document.fonts.ready);
+  const figure = page.locator('[data-proof-figure="work-order"]');
+  const svg = figure.locator("[data-proof-scene]:visible");
+  await svg.scrollIntoViewIfNeeded();
+  await page.clock.pauseAt(new Date(Date.now() + 100));
+  await figure.getByRole("tab", { name: "Draft", exact: true }).click();
+  await page.clock.runFor(100);
+  const packet = svg.locator('[data-proof-path="post-direction-probe"]');
+  const source = await packet.getAttribute("d");
+  await figure.getByRole("tab", { name: "Post", exact: true }).click();
+  await page.clock.runFor(800);
+  expect(await packet.getAttribute("d")).not.toEqual(source);
+  expect(Number(await packet.getAttribute("opacity"))).toBeGreaterThan(0.5);
+  expect(Number(await svg.getAttribute("data-proof-selection"))).toBeLessThan(
+    0.5,
+  );
+  await svg.screenshot({ path: testInfo.outputPath("claim-01-transfer.png") });
+  await page.clock.runFor(800);
+  const sweep = svg.locator('[data-proof-path="claim-post-scan"]');
+  expect(Number(await sweep.getAttribute("opacity"))).toBeGreaterThan(0.3);
+  await svg.screenshot({ path: testInfo.outputPath("claim-02-write.png") });
+  await page.clock.runFor(1000);
+  await expect(svg).toHaveAttribute("data-proof-selection", "1.000");
+  await expect(svg.locator('[data-proof-label="claim-state"]')).toHaveText(
+    "Posted",
+  );
+  const receipt = svg.locator('[data-proof-path="work-receipt-skin"]');
+  const emptyReceipt = await receipt.getAttribute("d");
+  await figure.getByRole("tab", { name: "Accept", exact: true }).click();
+  await page.clock.runFor(1300);
+  expect(await receipt.getAttribute("d")).not.toEqual(emptyReceipt);
+  expect(
+    Number(
+      await svg
+        .locator('[data-proof-label="receipt-value"]')
+        .getAttribute("opacity"),
+    ),
+  ).toBeLessThan(0.3);
+  await svg.screenshot({ path: testInfo.outputPath("claim-03-receipt.png") });
+  await page.clock.runFor(500);
+  const ack = svg.locator('[data-proof-path="receipt-direction-probe"]');
+  expect(Number(await ack.getAttribute("opacity"))).toBeGreaterThan(0.3);
+  await svg.screenshot({ path: testInfo.outputPath("claim-04-ack.png") });
+  await page.clock.runFor(800);
+  await expect(svg).toHaveAttribute("data-proof-selection", "2.000");
+  await expect(svg.locator('[data-proof-label="receipt-value"]')).toHaveText(
+    "Generation 1 · Parser agent",
+  );
+  await expect(
+    svg.locator('[data-proof-label="receipt-value"]'),
+  ).toHaveAttribute("data-proof-surface", "work-receipt-skin");
+  await expect(svg.locator('[data-proof-label="acceptance"]')).toHaveText(
+    "Acceptance: not evaluated",
+  );
+});
+
+test("responsive claim layout preserves the selected state without replaying hidden history", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.clock.install();
+  await page.goto("/blog/agentic-proof-of-work");
+  const figure = page.locator('[data-proof-figure="work-order"]');
+  await figure.locator("[data-proof-scene]:visible").scrollIntoViewIfNeeded();
+  await page.clock.pauseAt(new Date(Date.now() + 100));
+  await figure.getByRole("tab", { name: "Accept", exact: true }).click();
+  await page.clock.runFor(5000);
+  await expect(figure.locator("[data-proof-scene]:visible")).toHaveAttribute(
+    "data-proof-selection",
+    "2.000",
+  );
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await expect(figure.locator("[data-proof-scene]:visible")).toHaveAttribute(
+    "data-portrait",
+    "true",
+  );
+  await expect(figure.locator("[data-proof-scene]:visible")).toHaveAttribute(
+    "data-proof-selection",
+    "2.000",
+  );
 });
