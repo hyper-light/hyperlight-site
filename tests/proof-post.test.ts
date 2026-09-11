@@ -22,6 +22,11 @@ test("Agentic Proof of Work replaces the old title and keeps its incoming URL", 
   assert.equal(post.title, "Agentic Proof of Work");
   assert.equal(post.format, "mdx");
   assert.ok(post.headings.length >= 10);
+  assert.deepEqual(post.headings.at(-1), {
+    id: "heading-conclusion",
+    text: "Conclusion",
+    level: 2,
+  });
 });
 
 test("proof article renders all nine registered illustrations with its concrete examples", async () => {
@@ -60,6 +65,7 @@ test("proof article renders all nine registered illustrations with its concrete 
     "Ledger Sharding",
     "Global Distribution",
     "Failover and Recovery",
+    "Conclusion",
   ])
     assert.ok(html.includes(term), `missing explanation: ${term}`);
   assert.ok(!html.includes("What counts as done?"));

@@ -326,7 +326,13 @@ State-range movement is implemented, but current voters and extra holders still 
 
 Custody currently verifies the placement's required copies; independently checking those copies against its promised failure domains remains unfinished. These limits matter when selecting the failures a deployment can actually tolerate. [Custody qualification.][custody-limits]
 
-When C18's correction passes both checks, the next agent can retrieve that exact patch and its passing evaluations from the ledger. C17's earlier patch and failed review remain linked to it. The accepted correction and the failure that prompted it are both available to the next participant.
+## Conclusion
+
+When the maintainer receives C18's closing testament and both required checks pass against its patch, the ledger can record the correction as satisfied. A release agent can then use that patch, inspect its evaluations, and trace it back to C17's failed review. It doesn't have to reconstruct the conversation to discover what was tested.
+
+That handoff remains useful when the participants change. A replacement maintainer can see which requirements remain unmet on an open claim. A dependent claim can wait for acceptance. A failed attempt keeps its evidence, giving the next agent a concrete starting point for another correction.
+
+Keeping those handoffs available takes both the ledger's recorded decisions and the content store's artifact bytes. Replication and custody preserve them within the deployment's failure limits, while independent sessions let unrelated work advance separately. The checks still determine what acceptance means. The next participant can inspect those requirements, the exact work, and its evaluations before deciding how to use the result.
 
 [ledger]: https://github.com/hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md
 [peer]: https://github.com/hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md
