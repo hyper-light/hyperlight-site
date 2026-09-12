@@ -1,4 +1,5 @@
 import type { ProofFrameFunction, ProofTone } from "./proof-geometry";
+import { mobileJourneyAssembly, mobileJourneyGate, mobileJourneyPoint } from "./mobile-journey-layout";
 import {
   createLifecycleDrawing,
   drawLifecycleRecord,
@@ -93,10 +94,13 @@ export function spacecraftJourneyFrame(
   const pulseVisibility = easeLifecycle(
     Math.min(pulse / 0.08, (1 - pulse) / 0.08),
   );
-  const project = (x: number, y: number, z = 0): LifecyclePoint =>
+  const stageProject = (x: number, y: number, z = 0): LifecyclePoint =>
     portrait
-      ? [210 + 0.83 * y + 0.27 * z, 141 + 0.61 * x + 0.35 * y - 0.33 * z]
+      ? mobileJourneyPoint(x, y, z)
       : [64 + x + 0.48 * y, 273 + 0.68 * y - z];
+  let project = stageProject;
+  const assembly = (x: number, y: number) =>
+    portrait ? mobileJourneyAssembly(x, y) : stageProject;
 
   function prism(
     id: string,
@@ -146,7 +150,7 @@ export function spacecraftJourneyFrame(
     "claimant-party",
     "CLAIMANT",
     portrait ? 26 : 130,
-    portrait ? 94 : 88,
+    portrait ? 60 : 88,
     "name",
     undefined,
     portrait ? "start" : "middle",
@@ -154,8 +158,8 @@ export function spacecraftJourneyFrame(
   label(
     "respondent-party",
     "RESPONDENT",
-    portrait ? 26 : 670,
-    portrait ? 478 : 88,
+    portrait ? 252 : 670,
+    portrait ? 550 : 88,
     "name",
     undefined,
     portrait ? "start" : "middle",
@@ -163,8 +167,8 @@ export function spacecraftJourneyFrame(
   label(
     "ledger-party",
     "LEDGER",
-    portrait ? 26 : 384,
-    portrait ? 228 : 88,
+    portrait ? 302 : 384,
+    portrait ? 290 : 88,
     "name",
     undefined,
     portrait ? "start" : "middle",
@@ -219,13 +223,13 @@ export function spacecraftJourneyFrame(
   );
   for (let i = 0; i < 2; i++) {
     const dock = project(i ? 608 : 79, 0, 5);
-    ring(`dock-beacon-${i}`, dock[0], dock[1], 19, 0.25);
+    ring(`dock-beacon-${i}`, dock[0], dock[1], portrait ? 6 : 19, 0.25);
     for (let spoke = 0; spoke < 4; spoke++) {
       const angle = (spoke * Math.PI) / 2;
       line(
         `dock-beacon-${i}-tick-${spoke}`,
-        [dock[0] + Math.cos(angle) * 24, dock[1] + Math.sin(angle) * 24],
-        [dock[0] + Math.cos(angle) * 30, dock[1] + Math.sin(angle) * 30],
+        [dock[0] + Math.cos(angle) * (portrait ? 9 : 24), dock[1] + Math.sin(angle) * (portrait ? 9 : 24)],
+        [dock[0] + Math.cos(angle) * (portrait ? 12 : 30), dock[1] + Math.sin(angle) * (portrait ? 12 : 30)],
         0.3,
       );
     }
@@ -258,6 +262,7 @@ export function spacecraftJourneyFrame(
     },
   ];
   for (const gate of gates) {
+    project = portrait ? mobileJourneyGate(gate.x, gate.y) : stageProject;
     const tone: ProofTone = gate.passed ? "pass" : "neutral";
     for (const side of [-1, 1])
       prism(
@@ -286,21 +291,23 @@ export function spacecraftJourneyFrame(
         `${gate.id}-tooth-${tooth}`,
         gate.x + 1,
         gate.y - 23 + tooth * 19,
-        27 + gate.open * 23,
+        portrait ? 27 + gate.open * 30 : 27 + gate.open * 23,
         7,
         9,
-        26 - gate.open * 21,
+        portrait ? 26 - gate.open * 25 : 26 - gate.open * 21,
         0.65,
         tone,
       );
+    if (portrait)
+      prism(gate.id + "-threshold", gate.x - 2, gate.y - 38, 3, 13, 76, 3, 0.55, tone);
     const status = project(gate.x + 4, gate.y - 33, 60);
     ring(gate.id + "-lamp", status[0], status[1], 2.5, 0.6, tone);
     if (gate.id !== "posted")
       label(
         gate.id + "-title",
         gate.title,
-        portrait ? 289 : 64 + gate.x + 0.48 * gate.y,
-        portrait ? 114 + gate.x * 0.61 : gate.id === "response" ? 198 : 128,
+        portrait ? (gate.id === "response" ? 215 : 268) : 64 + gate.x + 0.48 * gate.y,
+        portrait ? (gate.id === "response" ? 215 : 388) : gate.id === "response" ? 198 : 128,
         "small",
         undefined,
         portrait ? "start" : "middle",
@@ -311,6 +318,7 @@ export function spacecraftJourneyFrame(
   // return port occupies the other route; the append stack joins both ports.
   // This open architecture records participant facts and invokes no tools.
   const stationX = 307;
+  project = portrait ? mobileJourneyGate(stationX, 50) : stageProject;
   for (const side of [-1, 1])
     prism(
       `ledger-return-post-${side}`,
@@ -339,14 +347,18 @@ export function spacecraftJourneyFrame(
       `ledger-return-tooth-${tooth}`,
       stationX + 1,
       27 + tooth * 19,
-      27 + returnPortOpen * 23,
+      portrait ? 27 + returnPortOpen * 30 : 27 + returnPortOpen * 23,
       7,
       9,
-      26 - returnPortOpen * 21,
+      portrait ? 26 - returnPortOpen * 25 : 26 - returnPortOpen * 21,
       0.65,
       responsePosted ? "pass" : "neutral",
     );
-  prism("ledger-port-bridge", stationX - 2, -14, 56, 13, 28, 5, 0.55);
+  if (portrait)
+    prism("ledger-return-threshold", stationX - 2, 12, 3, 13, 76, 3, 0.55);
+  const ledgerProject = portrait ? mobileJourneyAssembly(stationX, 0, [336, 368]) : stageProject;
+  project = ledgerProject;
+  prism("ledger-port-bridge", stationX - 2, -14, 56, 13, 28, 5, portrait ? 0 : 0.55);
   prism("ledger-record-spine", stationX - 7, -11, 8, 7, 22, 55, 0.65);
   for (let slot = 0; slot < 6; slot++) {
     const z = 11 + slot * 8;
@@ -378,10 +390,12 @@ export function spacecraftJourneyFrame(
       committed ? commitTone : "neutral",
     );
   }
+  project = portrait ? mobileJourneyGate(stationX, 50) : stageProject;
   const inboundPort = [
     project(stationX + 31, 50, 24),
     project(stationX - 17, 50, 24),
   ];
+  project = portrait ? mobileJourneyGate(stationX, -50) : stageProject;
   const outboundPort = [
     project(stationX - 17, -50, 24),
     project(stationX + 31, -50, 24),
@@ -398,6 +412,11 @@ export function spacecraftJourneyFrame(
     pulse,
     responsePosted ? 0.65 : 0,
   );
+  project = stageProject;
+  if (portrait) {
+    path("ledger-outbound-conduit", [ledgerProject(stationX + 20, 0, 50), [285, 325], stageProject(stationX, -50, 8)], "fine", 0.24);
+    path("ledger-return-conduit", [ledgerProject(stationX + 20, 0, 14), [285, 363], stageProject(stationX, 50, 8)], "fine", 0.24);
+  }
 
   // Receipt handoffs are one-shot participant-authored messages, never ambient
   // packet loops. The ledger retains the committed fact; its receipt copy can
@@ -464,7 +483,7 @@ export function spacecraftJourneyFrame(
   const executionRequest: LifecyclePoint[] = [
     project(603, -88, 16),
     project(420, -102, 18),
-    project(stationX + 17, -11, 22),
+    ledgerProject(stationX + 17, -11, 22),
   ];
   const acquisition = phase(0.85, executionCut);
   const grant = phase(
@@ -512,7 +531,7 @@ export function spacecraftJourneyFrame(
   const deliveryRoute: LifecyclePoint[] = [
     project(79, 65, 12),
     project(220, 65, 18),
-    project(stationX + 17, 11, 46),
+    ledgerProject(stationX + 17, 11, 46),
   ];
   const acknowledgment = phase(2.85, deliveryCut);
   const acknowledgmentVisible =
@@ -580,8 +599,9 @@ export function spacecraftJourneyFrame(
       identity === "T1" && options.testamentVisible !== undefined
         ? 1 - easeLifecycle(opacity)
         : 0;
+    const shipProject = portrait ? mobileJourneyAssembly(x, lane, undefined, identity === "T1" ? 1.7 : 1.7 * (1 - phase(0.86, 1))) : project;
     const p = (dx: number, dy: number, z: number) =>
-      project(x + dx * direction, lane + dy * direction, z + assembly * 12);
+      shipProject(x + dx * direction, lane + dy * direction, z + assembly * 12);
     const spread = parked ? 24 : 34;
     const hull = [
       p(65, 0, 27),
@@ -720,7 +740,7 @@ export function spacecraftJourneyFrame(
       labelY =
         identity === "T1"
           ? portrait
-            ? Math.min(...hull.map((point) => point[1]), p(21, 0, 44)[1]) - 14
+            ? Math.max(...hull.map((point) => point[1])) + 23
             : 350
           : Math.min(...hull.map((point) => point[1]), p(21, 0, 44)[1]) - 14;
     label(
@@ -763,7 +783,10 @@ export function spacecraftJourneyFrame(
     options.artifactVisible === undefined
       ? 0
       : 1 - easeLifecycle(artifactVisible);
-  const dock = portrait ? { x: 275, y: -85, z: 12 } : { x: 270, y: 130, z: 12 };
+  // The mobile inspection berth occupies the foreground, left of the
+  // respondent. Its entire articulated sweep clears the two flight lanes.
+  const dock = { x: 270, y: 130, z: 12 };
+  const mobileInspection: LifecyclePoint = [82, 441];
   const blend = (a: number, b: number, t: number) => a + (b - a) * t;
   // The frozen attachment commits at Close. Loading is the subsequent physical
   // packaging of that same binding into the generated, still-unposted T1 ship.
@@ -778,6 +801,17 @@ export function spacecraftJourneyFrame(
       unload,
     ) +
     artifactAssembly * 12;
+  const responseProject = portrait ? mobileJourneyAssembly(responseX, 50, undefined, 1.7) : stageProject;
+  const workPosition = stageProject(570, 100);
+  const loadedPosition = responseProject(responseX - 8, 39);
+  const sourcePosition: LifecyclePoint = [blend(workPosition[0], loadedPosition[0], load), blend(workPosition[1], loadedPosition[1], load)];
+  const artifactProject = portrait
+    ? mobileJourneyAssembly(artifactX, artifactY, [
+        blend(sourcePosition[0], mobileInspection[0], unload),
+        blend(sourcePosition[1], mobileInspection[1], unload),
+      ], 1.7 * load * (1 - unload))
+    : stageProject;
+  project = artifactProject;
   const artifactWidth = blend(24, 40, unload) * (1 - artifactAssembly * 0.45),
     artifactDepth = blend(22, 36, unload) * (1 - artifactAssembly * 0.45);
   const cut = 4;
@@ -848,6 +882,7 @@ export function spacecraftJourneyFrame(
       artifactVisible * 0.7,
     );
   }
+  project = assembly(563, 93);
   prism(
     "cargo-loading-rack",
     563,
@@ -858,6 +893,7 @@ export function spacecraftJourneyFrame(
     4,
     artifactVisible * (1 - load) * 0.45,
   );
+  project = responseProject;
   prism(
     "cargo-bay-floor",
     responseX - 12,
@@ -889,6 +925,7 @@ export function spacecraftJourneyFrame(
     responseVisible * 0.7 * (1 - unload),
   );
   const liftVisibility = artifactVisible * 4 * load * (1 - load);
+  project = artifactProject;
   const liftingPoint = project(
     artifactX + artifactWidth / 2,
     artifactY + artifactDepth / 2,
@@ -896,7 +933,7 @@ export function spacecraftJourneyFrame(
   );
   path(
     "cargo-loading-hoist",
-    [project(560, 120, 8), project(548, 90, 105), liftingPoint],
+    [assembly(560, 100)(560, 120, 8), assembly(560, 100)(548, 90, 105), liftingPoint],
     "edge",
     liftVisibility * 0.55,
   );
@@ -937,6 +974,7 @@ export function spacecraftJourneyFrame(
       artifactVisible * 0.6,
     );
   }
+  project = portrait ? mobileJourneyAssembly(dock.x, dock.y, mobileInspection) : stageProject;
   prism(
     "inspection-cradle",
     dock.x - 8,
@@ -1074,11 +1112,9 @@ export function spacecraftJourneyFrame(
     const ledgerPoint: LifecyclePoint = portrait
       ? [240 + i * 95, 585]
       : [520 + i * 95, 427];
-    const resultRoute: LifecyclePoint[] = [
-      head,
-      [head[0] + (i ? 24 : -24), portrait ? 548 : 397],
-      ledgerPoint,
-    ];
+    const resultRoute: LifecyclePoint[] = portrait
+      ? [head, [i ? 402 : 16, 471], [i ? 402 : 16, 585], ledgerPoint]
+      : [head, [head[0] + (i ? 24 : -24), 397], ledgerPoint];
     path(
       `witness-result-route-${i}`,
       resultRoute,
@@ -1097,7 +1133,7 @@ export function spacecraftJourneyFrame(
       `witness-title-${i}`,
       probe?.title ?? (i ? "Review" : "Behavior"),
       portrait ? 26 : 356 + i * 122,
-      portrait ? 301 + i * 35 : 394,
+      portrait ? 496 + i * 25 : 394,
       "small",
       tone,
       undefined,
@@ -1106,12 +1142,12 @@ export function spacecraftJourneyFrame(
   }
 
   // One direct connection makes the lower history the record of this station.
+  project = stageProject;
   const railY = portrait ? 585 : 427;
-  const stationBase = project(stationX + 10, 0, 8);
-  const stationHistory: LifecyclePoint[] = [
-    stationBase,
-    [stationBase[0], railY],
-  ];
+  const stationBase = ledgerProject(stationX + 10, 0, 8);
+  const stationHistory: LifecyclePoint[] = portrait
+    ? [stationBase, [402, stationBase[1]], [402, railY], [392, railY]]
+    : [stationBase, [stationBase[0], railY]];
   path("ledger-station-history", stationHistory, "fine", 0.2);
   packet("ledger-station-commit", stationHistory, pulse, s >= 0.18 ? 0.45 : 0);
   const claimState =

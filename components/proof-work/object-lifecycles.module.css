@@ -67,12 +67,6 @@
     align-items: stretch;
     gap: 12px;
   }
-  .explorer [data-proof-steps] {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    align-content: start;
-    min-height: 98px;
-  }
   .explorer [data-proof-steps] > button {
     font-size: 11px;
   }
@@ -80,11 +74,5 @@
 @container (max-width: 560px) {
   .controls {
     padding: 14px 17px;
-  }
-}
-@container (max-width: 340px) {
-  .explorer [data-proof-steps] {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    min-height: 146px;
   }
 }

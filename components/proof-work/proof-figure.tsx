@@ -41,6 +41,7 @@ export function ProofFigure({
   stepDuration = 0,
   seekDuration,
   controls,
+  mobileStageRail = false,
   reserveSteps = [],
   resetKey = id,
 }: {
@@ -58,6 +59,8 @@ export function ProofFigure({
   seekDuration?: number;
   /** Optional selectors belong inside the figure, above its fixed scene. */
   controls?: ReactNode;
+  /** Keep long lifecycle navigation in one scrollable row on narrow figures. */
+  mobileStageRail?: boolean;
   /** Reserve the tallest explanation across sibling views without running hidden scenes. */
   reserveSteps?: ProofStep[];
   resetKey?: string;
@@ -75,9 +78,39 @@ export function ProofFigure({
     setReplay(0);
   }
   const stage = useRef<HTMLDivElement>(null);
+  const navigation = useRef<HTMLDivElement>(null);
   const activeStepDuration =
     steps[selected]?.transitionDuration ?? stepDuration;
   const { paused, reduced, toggle } = useMotionPreference();
+  useEffect(() => {
+    const rail = navigation.current;
+    if (!mobileStageRail || !rail) return;
+    const revealSelected = () => {
+      // Only scroll the rail, never the article or the animation above it.
+      // Desktop keeps the existing equal-width, non-scrolling navigation.
+      if (getComputedStyle(rail).overflowX !== "auto") return;
+      const active = rail.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (!active) return;
+      const bounds = rail.getBoundingClientRect();
+      const item = active.getBoundingClientRect();
+      const inset = 12;
+      const delta =
+        item.left < bounds.left + inset
+          ? item.left - bounds.left - inset
+          : item.right > bounds.right - inset
+            ? item.right - bounds.right + inset
+            : 0;
+      if (delta)
+        rail.scrollTo({
+          left: rail.scrollLeft + delta,
+          behavior: reduced ? "instant" : "smooth",
+        });
+    };
+    revealSelected();
+    const observer = new ResizeObserver(revealSelected);
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, [mobileStageRail, selected, resetKey, reduced]);
   useEffect(() => {
     const element = stage.current;
     if (!element || !sequence || paused || selected >= steps.length - 1) return;
@@ -133,9 +166,15 @@ export function ProofFigure({
     if (next < 0) return;
     event.preventDefault();
     select(next);
-    event.currentTarget.parentElement
-      ?.querySelectorAll<HTMLButtonElement>("button")
-      [next]?.focus();
+    const rail = event.currentTarget.parentElement;
+    const nextButton =
+      rail?.querySelectorAll<HTMLButtonElement>("button")[next];
+    nextButton?.focus({
+      preventScroll:
+        mobileStageRail &&
+        !!rail &&
+        getComputedStyle(rail).overflowX === "auto",
+    });
   };
   return (
     <figure
@@ -207,9 +246,11 @@ export function ProofFigure({
       </div>
       <div
         className={tabs.tabs}
+        ref={navigation}
         role="tablist"
         aria-label={title}
         data-proof-steps=""
+        data-mobile-stage-rail={mobileStageRail || undefined}
       >
         {steps.map((step, index) => (
           <button

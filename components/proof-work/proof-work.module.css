@@ -203,6 +203,34 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+@container (max-width: 700px) {
+  .figure [data-mobile-stage-rail="true"] {
+    display: flex;
+    flex-wrap: nowrap;
+    min-height: 48px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 12px;
+    scrollbar-width: none;
+  }
+  .figure [data-mobile-stage-rail="true"]::-webkit-scrollbar {
+    display: none;
+  }
+  .figure [data-proof-steps][data-mobile-stage-rail="true"] > button {
+    flex: 0 0 auto;
+    min-width: 72px;
+    min-height: 48px;
+    padding: 12px 18px;
+    white-space: nowrap;
+  }
+  .figure [data-mobile-stage-rail="true"] .longLabel {
+    display: inline;
+  }
+  .figure [data-mobile-stage-rail="true"] .shortLabel {
+    display: none;
+  }
+}
 @container (max-width: 560px) {
   .actions {
     flex-direction: column-reverse;

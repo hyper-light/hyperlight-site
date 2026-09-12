@@ -148,13 +148,15 @@ test("C17 stays with the respondent while separately authored T1 returns to the 
     const frames = [0, 1, 2, 3, 4, 5].map((stage) =>
       claimLifecycleFrame(0, stage, portrait),
     );
-    const axis = portrait ? 1 : 0,
-      claim = "claim-ship-spacecraft-hull",
+    const claim = "claim-ship-spacecraft-hull",
       response = "testament-ship-spacecraft-hull";
+    const claimStart = coordinates(path(frames[0], claim).d),
+      claimEnd = coordinates(path(frames[1], claim).d);
     assert.ok(
-      coordinates(path(frames[1], claim).d)[axis] -
-        coordinates(path(frames[0], claim).d)[axis] >
-        (portrait ? 280 : 470),
+      portrait
+        ? Math.hypot(claimEnd[0] - claimStart[0], claimEnd[1] - claimStart[1]) >
+            200
+        : claimEnd[0] - claimStart[0] > 470,
     );
     assert.equal(path(frames[1], claim).d, path(frames[5], claim).d);
     assert.equal(path(frames[0], response).opacity, 0);
@@ -163,10 +165,15 @@ test("C17 stays with the respondent while separately authored T1 returns to the 
       0,
     );
     assert.ok(path(frames[2], response).opacity > 0.5);
+    const responseStart = coordinates(path(frames[2], response).d),
+      responseEnd = coordinates(path(frames[3], response).d);
     assert.ok(
-      coordinates(path(frames[2], response).d)[axis] -
-        coordinates(path(frames[3], response).d)[axis] >
-        (portrait ? 290 : 490),
+      portrait
+        ? Math.hypot(
+            responseEnd[0] - responseStart[0],
+            responseEnd[1] - responseStart[1],
+          ) > 200
+        : responseStart[0] - responseEnd[0] > 490,
     );
     assert.equal(path(frames[3], response).d, path(frames[5], response).d);
     for (const frame of frames) {

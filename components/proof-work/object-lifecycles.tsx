@@ -58,6 +58,7 @@ export function ObjectLifecycles() {
         autoAdvance
         stepDuration={2.4}
         seekDuration={0.85}
+        mobileStageRail
       />
     </section>
   );
