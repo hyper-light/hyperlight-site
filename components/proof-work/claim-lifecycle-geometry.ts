@@ -48,6 +48,10 @@ export function spacecraftJourneyFrame(
     inbound = phase(2.22, 2.85);
   const claimX = 55 + outbound * 555,
     responseX = 550 - inbound * 495;
+  // Clear the return gate before pivoting into the berth. Keep every attached
+  // assembly on the same turn, with a continuous wing fold like C17's landing.
+  const responseLanding = phase(2.86, 3);
+  const responseYaw = 1.7 * (1 - responseLanding);
   const responseVisible = options.testamentVisible ?? (s >= 1.97 ? 1 : 0);
   const responseReadout = options.readouts?.find(
     ({ id }) => id === "testament",
@@ -167,8 +171,8 @@ export function spacecraftJourneyFrame(
   label(
     "ledger-party",
     "LEDGER",
-    portrait ? 302 : 384,
-    portrait ? 290 : 88,
+    portrait ? 332 : 384,
+    portrait ? 250 : 88,
     "name",
     undefined,
     portrait ? "start" : "middle",
@@ -240,7 +244,9 @@ export function spacecraftJourneyFrame(
       id: "posted",
       x: 307,
       y: -50,
-      open: phase(0.08, 0.48),
+      // The mobile projection brings the leading hull to the opening sooner.
+      // Retract before the nose arrives; receipt lamps still follow commits.
+      open: portrait ? phase(0.08, 0.4) : phase(0.08, 0.48),
       passed: claimPosted,
       title: "",
     },
@@ -248,7 +254,7 @@ export function spacecraftJourneyFrame(
       id: "holder",
       x: 520,
       y: -50,
-      open: phase(0.4, 0.96),
+      open: portrait ? phase(0.34, 0.54) : phase(0.4, 0.96),
       passed: executionHeld,
       title: "EXECUTION RECEIPT",
     },
@@ -256,7 +262,7 @@ export function spacecraftJourneyFrame(
       id: "response",
       x: 171,
       y: 50,
-      open: phase(2.22, 2.85),
+      open: portrait ? phase(2.22, 2.55) : phase(2.22, 2.85),
       passed: deliveryConfirmed,
       title: "T1 RECEIPT",
     },
@@ -305,13 +311,15 @@ export function spacecraftJourneyFrame(
     if (gate.id !== "posted")
       label(
         gate.id + "-title",
-        gate.title,
-        portrait ? (gate.id === "response" ? 215 : 268) : 64 + gate.x + 0.48 * gate.y,
-        portrait ? (gate.id === "response" ? 215 : 388) : gate.id === "response" ? 198 : 128,
+        portrait && gate.id === "holder" ? "EXECUTION" : gate.title,
+        portrait ? (gate.id === "response" ? 290 : 90) : 64 + gate.x + 0.48 * gate.y,
+        portrait ? (gate.id === "response" ? 186 : 320) : gate.id === "response" ? 198 : 128,
         "small",
         undefined,
-        portrait ? "start" : "middle",
+        portrait ? (gate.id === "response" ? "start" : "end") : "middle",
       );
+    if (portrait && gate.id === "holder")
+      label("holder-title-detail", "RECEIPT", 90, 341, "small", undefined, "end");
   }
 
   // The posting gate is the outbound port of one shared ledger station. Its
@@ -341,7 +349,7 @@ export function spacecraftJourneyFrame(
     0.65,
     responsePosted ? "pass" : "neutral",
   );
-  const returnPortOpen = phase(2.2, 2.5);
+  const returnPortOpen = portrait ? phase(2.2, 2.41) : phase(2.2, 2.5);
   for (let tooth = 0; tooth < 3; tooth++)
     prism(
       `ledger-return-tooth-${tooth}`,
@@ -356,7 +364,7 @@ export function spacecraftJourneyFrame(
     );
   if (portrait)
     prism("ledger-return-threshold", stationX - 2, 12, 3, 13, 76, 3, 0.55);
-  const ledgerProject = portrait ? mobileJourneyAssembly(stationX, 0, [336, 368]) : stageProject;
+  const ledgerProject = portrait ? mobileJourneyAssembly(stationX, 0, [336, 340]) : stageProject;
   project = ledgerProject;
   prism("ledger-port-bridge", stationX - 2, -14, 56, 13, 28, 5, portrait ? 0 : 0.55);
   prism("ledger-record-spine", stationX - 7, -11, 8, 7, 22, 55, 0.65);
@@ -414,8 +422,8 @@ export function spacecraftJourneyFrame(
   );
   project = stageProject;
   if (portrait) {
-    path("ledger-outbound-conduit", [ledgerProject(stationX + 20, 0, 50), [285, 325], stageProject(stationX, -50, 8)], "fine", 0.24);
-    path("ledger-return-conduit", [ledgerProject(stationX + 20, 0, 14), [285, 363], stageProject(stationX, 50, 8)], "fine", 0.24);
+    path("ledger-outbound-conduit", [ledgerProject(stationX + 20, 0, 50), [285, 297], stageProject(stationX, -50, 8)], "fine", 0.24);
+    path("ledger-return-conduit", [ledgerProject(stationX + 20, 0, 14), [285, 335], stageProject(stationX, 50, 8)], "fine", 0.24);
   }
 
   // Receipt handoffs are one-shot participant-authored messages, never ambient
@@ -528,8 +536,13 @@ export function spacecraftJourneyFrame(
     executionHeld && grant >= 1 ? 0.5 : 0.12,
     executionHeld ? "pass" : "neutral",
   );
+  // Dock on the same local hull position as C17's receipt, respecting T1's
+  // reversed heading. The identity remains above the ship, never in the seal.
+  const deliverySocket = portrait
+    ? mobileJourneyAssembly(55, 50, undefined, responseYaw)(62, 68, 16)
+    : project(79, 65, 12);
   const deliveryRoute: LifecyclePoint[] = [
-    project(79, 65, 12),
+    deliverySocket,
     project(220, 65, 18),
     ledgerProject(stationX + 17, 11, 46),
   ];
@@ -599,10 +612,16 @@ export function spacecraftJourneyFrame(
       identity === "T1" && options.testamentVisible !== undefined
         ? 1 - easeLifecycle(opacity)
         : 0;
-    const shipProject = portrait ? mobileJourneyAssembly(x, lane, undefined, identity === "T1" ? 1.7 : 1.7 * (1 - phase(0.86, 1))) : project;
-    const p = (dx: number, dy: number, z: number) =>
-      shipProject(x + dx * direction, lane + dy * direction, z + assembly * 12);
-    const spread = parked ? 24 : 34;
+    const shipProject = portrait ? mobileJourneyAssembly(x, lane, undefined, identity === "T1" ? responseYaw : 1.7 * (1 - phase(0.86, 1))) : project;
+    let silhouetteTop = Infinity;
+    const p = (dx: number, dy: number, z: number) => {
+      const point = shipProject(x + dx * direction, lane + dy * direction, z + assembly * 12);
+      silhouetteTop = Math.min(silhouetteTop, point[1]);
+      return point;
+    };
+    const spread = portrait
+      ? 34 - 10 * (identity === "T1" ? responseLanding : phase(0.86, 1))
+      : parked ? 24 : 34;
     const hull = [
       p(65, 0, 27),
       p(26, -16, 32),
@@ -738,11 +757,10 @@ export function spacecraftJourneyFrame(
     }
     const labelX = p(15, 0, 43)[0],
       labelY =
-        identity === "T1"
-          ? portrait
-            ? Math.max(...hull.map((point) => point[1])) + 23
-            : 350
-          : Math.min(...hull.map((point) => point[1]), p(21, 0, 44)[1]) - 14;
+        // In its horizontal pose T1's stowed cargo sits just above the canopy.
+        portrait ? silhouetteTop - 14 - (identity === "T1" ? responseLanding * 4 : 0)
+          : identity === "T1" ? 350
+            : Math.min(...hull.map((point) => point[1]), p(21, 0, 44)[1]) - 14;
     label(
       prefix + "-message-id",
       identity,
@@ -786,7 +804,7 @@ export function spacecraftJourneyFrame(
   // The mobile inspection berth occupies the foreground, left of the
   // respondent. Its entire articulated sweep clears the two flight lanes.
   const dock = { x: 270, y: 130, z: 12 };
-  const mobileInspection: LifecyclePoint = [82, 441];
+  const mobileInspection: LifecyclePoint = [66, 441];
   const blend = (a: number, b: number, t: number) => a + (b - a) * t;
   // The frozen attachment commits at Close. Loading is the subsequent physical
   // packaging of that same binding into the generated, still-unposted T1 ship.
@@ -801,7 +819,7 @@ export function spacecraftJourneyFrame(
       unload,
     ) +
     artifactAssembly * 12;
-  const responseProject = portrait ? mobileJourneyAssembly(responseX, 50, undefined, 1.7) : stageProject;
+  const responseProject = portrait ? mobileJourneyAssembly(responseX, 50, undefined, responseYaw) : stageProject;
   const workPosition = stageProject(570, 100);
   const loadedPosition = responseProject(responseX - 8, 39);
   const sourcePosition: LifecyclePoint = [blend(workPosition[0], loadedPosition[0], load), blend(workPosition[1], loadedPosition[1], load)];
@@ -809,7 +827,7 @@ export function spacecraftJourneyFrame(
     ? mobileJourneyAssembly(artifactX, artifactY, [
         blend(sourcePosition[0], mobileInspection[0], unload),
         blend(sourcePosition[1], mobileInspection[1], unload),
-      ], 1.7 * load * (1 - unload))
+      ], responseYaw * load * (1 - unload))
     : stageProject;
   project = artifactProject;
   const artifactWidth = blend(24, 40, unload) * (1 - artifactAssembly * 0.45),
@@ -1223,7 +1241,7 @@ export function spacecraftJourneyFrame(
           ? Math.max(contextOpacity, 0.75)
           : contextOpacity;
   for (const item of frame.labels)
-    if (/^(posted|holder|response)-title$/.test(item.id))
+    if (/^(posted|holder|response)-title(?:-detail)?$/.test(item.id))
       item.opacity =
         item.id === "response-title" && deliveryConfirmed
           ? Math.max(contextOpacity, 0.75)

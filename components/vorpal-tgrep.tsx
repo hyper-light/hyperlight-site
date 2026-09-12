@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
+import { AnimationMotionControls } from "./animation-motion-controls";
 import { useMotionPreference } from "./motion-provider";
 import { useStudyMotion } from "./studies/use-study-motion";
 import { comparisonSurface } from "./comparison-geometry";
@@ -284,27 +285,29 @@ export function VorpalTgrep() {
             Vorpal and tgrep.
           </h3>
         </div>
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={toggle}
-          disabled={reduced}
-          aria-pressed={paused}
-          aria-label={
-            reduced
-              ? "Tgrep comparison follows reduced motion"
-              : paused
-                ? "Resume tgrep comparison animation"
-                : "Pause tgrep comparison animation"
-          }
-          title="Control all ambient motion"
-        >
-          {paused ? (
-            <Play size={14} aria-hidden="true" />
-          ) : (
-            <Pause size={14} aria-hidden="true" />
-          )}
-        </button>
+        <AnimationMotionControls unavailableReplayLabel="Replay tgrep comparison animation (unavailable)">
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={toggle}
+            disabled={reduced}
+            aria-pressed={paused}
+            aria-label={
+              reduced
+                ? "Tgrep comparison follows reduced motion"
+                : paused
+                  ? "Resume tgrep comparison animation"
+                  : "Pause tgrep comparison animation"
+            }
+            title="Control all ambient motion"
+          >
+            {paused ? (
+              <Play size={14} aria-hidden="true" />
+            ) : (
+              <Pause size={14} aria-hidden="true" />
+            )}
+          </button>
+        </AnimationMotionControls>
       </div>
       <div
         className={articleTabs.tabs}

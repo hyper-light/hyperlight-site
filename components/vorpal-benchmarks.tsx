@@ -2,6 +2,7 @@
 
 import { useId, useRef } from "react";
 import { Pause, Play } from "lucide-react";
+import { AnimationMotionControls } from "./animation-motion-controls";
 import { useMotionPreference } from "@/components/motion-provider";
 import { useStudyMotion } from "@/components/studies/use-study-motion";
 import styles from "./vorpal-benchmarks.module.css";
@@ -268,33 +269,35 @@ export function VorpalBenchmarks() {
             Time to index a codebase.
           </h3>
         </div>
-        <button
-          type="button"
-          className={styles.motion}
-          onClick={toggle}
-          disabled={reduced}
-          aria-pressed={paused}
-          aria-label={
-            reduced
-              ? "Benchmark animation follows reduced motion"
-              : paused
-                ? "Resume benchmark animation"
-                : "Pause benchmark animation"
-          }
-          title={
-            reduced
-              ? "Following your device's motion preference"
-              : paused
-                ? "Resume all ambient motion"
-                : "Pause all ambient motion"
-          }
-        >
-          {paused ? (
-            <Play size={14} aria-hidden="true" />
-          ) : (
-            <Pause size={14} aria-hidden="true" />
-          )}
-        </button>
+        <AnimationMotionControls unavailableReplayLabel="Replay benchmark animation (unavailable)">
+          <button
+            type="button"
+            className={styles.motion}
+            onClick={toggle}
+            disabled={reduced}
+            aria-pressed={paused}
+            aria-label={
+              reduced
+                ? "Benchmark animation follows reduced motion"
+                : paused
+                  ? "Resume benchmark animation"
+                  : "Pause benchmark animation"
+            }
+            title={
+              reduced
+                ? "Following your device's motion preference"
+                : paused
+                  ? "Resume all ambient motion"
+                  : "Pause all ambient motion"
+            }
+          >
+            {paused ? (
+              <Play size={14} aria-hidden="true" />
+            ) : (
+              <Pause size={14} aria-hidden="true" />
+            )}
+          </button>
+        </AnimationMotionControls>
       </div>
       <p className={styles.subtitle}>
         Vorpal and codebase-memory-mcp. Less time is better.

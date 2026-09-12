@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useMotionPreference } from "@/components/motion-provider";
+import { AnimationMotionControls } from "@/components/animation-motion-controls";
 import { ProofScene } from "./proof-scene";
 import type { ProofFrameFunction } from "./proof-geometry";
 import tabs from "@/components/article-tabs.module.css";
@@ -190,7 +191,11 @@ export function ProofFigure({
           </h3>
           {description && <p className={styles.description}>{description}</p>}
         </div>
-        <div className={styles.actions}>
+        <AnimationMotionControls
+          unavailableReplayLabel={
+            !autoAdvance ? `Replay ${title} sequence (unavailable)` : undefined
+          }
+        >
           {autoAdvance && (
             <button
               className={styles.motion}
@@ -221,7 +226,7 @@ export function ProofFigure({
               <Pause size={15} aria-hidden="true" />
             )}
           </button>
-        </div>
+        </AnimationMotionControls>
       </header>
       {controls}
       <div className={styles.stage} ref={stage}>

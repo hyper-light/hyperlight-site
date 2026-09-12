@@ -119,6 +119,7 @@ export function ProofScene({
     const selectionChanged = previousSelection.current !== selection;
     previousSelection.current = selection;
     let nodes = cache.get(svg);
+    const firstMount = !nodes;
     // Fast Refresh can retain this SVG while replacing its geometry function.
     // Rebind before animation resumes so old coordinates never target new labels.
     const rebound =
@@ -154,8 +155,17 @@ export function ProofScene({
         (selectionChanged && svg.getClientRects().length === 0) ||
         window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     ) {
-      nodes.selection = selection;
-      nodes.transition = { from: selection, target: selection, elapsed: 0 };
+      // A geometry-only Fast Refresh must retain the in-flight pose, not
+      // teleport to the selected stage while the preview is being edited.
+      if (
+        firstMount ||
+        !rebound ||
+        selectionChanged ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        nodes.selection = selection;
+        nodes.transition = { from: selection, target: selection, elapsed: 0 };
+      }
       paint(svg, nodes, nodes.time);
     }
   }, [frame, portrait, paused, selection]);

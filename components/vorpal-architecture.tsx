@@ -2,6 +2,7 @@
 
 import { useId, useRef } from "react";
 import { Pause, Play } from "lucide-react";
+import { AnimationMotionControls } from "./animation-motion-controls";
 import { useMotionPreference } from "@/components/motion-provider";
 import { useStudyMotion } from "@/components/studies/use-study-motion";
 import styles from "./vorpal-architecture.module.css";
@@ -585,33 +586,35 @@ export function VorpalArchitecture({ description }: { description: string }) {
             How Vorpal works.
           </h3>
         </div>
-        <button
-          className={styles.motion}
-          type="button"
-          onClick={toggle}
-          disabled={reduced}
-          aria-pressed={paused}
-          aria-label={
-            reduced
-              ? "Architecture follows reduced motion"
-              : paused
-                ? "Resume architecture animation"
-                : "Pause architecture animation"
-          }
-          title={
-            reduced
-              ? "Following your device's motion preference"
-              : paused
-                ? "Resume all ambient motion"
-                : "Pause all ambient motion"
-          }
-        >
-          {paused ? (
-            <Play size={14} aria-hidden="true" />
-          ) : (
-            <Pause size={14} aria-hidden="true" />
-          )}
-        </button>
+        <AnimationMotionControls unavailableReplayLabel="Replay architecture animation (unavailable)">
+          <button
+            className={styles.motion}
+            type="button"
+            onClick={toggle}
+            disabled={reduced}
+            aria-pressed={paused}
+            aria-label={
+              reduced
+                ? "Architecture follows reduced motion"
+                : paused
+                  ? "Resume architecture animation"
+                  : "Pause architecture animation"
+            }
+            title={
+              reduced
+                ? "Following your device's motion preference"
+                : paused
+                  ? "Resume all ambient motion"
+                  : "Pause all ambient motion"
+            }
+          >
+            {paused ? (
+              <Play size={14} aria-hidden="true" />
+            ) : (
+              <Pause size={14} aria-hidden="true" />
+            )}
+          </button>
+        </AnimationMotionControls>
       </div>
       <div className={styles.diagram}>
         <Flow vertical={false} paused={paused} />

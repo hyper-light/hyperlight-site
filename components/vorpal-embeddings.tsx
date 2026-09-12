@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Pause, Play, ArrowRight } from "lucide-react";
+import { AnimationMotionControls } from "./animation-motion-controls";
 import { useMotionPreference } from "@/components/motion-provider";
 import { useStudyMotion } from "@/components/studies/use-study-motion";
 import {
@@ -604,26 +605,28 @@ export function VorpalEmbeddings() {
             From words to a vector.
           </h3>
         </div>
-        <button
-          type="button"
-          className={styles.motion}
-          onClick={toggle}
-          disabled={reduced}
-          aria-pressed={paused}
-          aria-label={
-            reduced
-              ? "Embeddings follow reduced motion"
-              : paused
-                ? "Resume embedding animation"
-                : "Pause embedding animation"
-          }
-        >
-          {paused ? (
-            <Play size={15} aria-hidden="true" />
-          ) : (
-            <Pause size={15} aria-hidden="true" />
-          )}
-        </button>
+        <AnimationMotionControls unavailableReplayLabel="Replay embedding animation (unavailable)">
+          <button
+            type="button"
+            className={styles.motion}
+            onClick={toggle}
+            disabled={reduced}
+            aria-pressed={paused}
+            aria-label={
+              reduced
+                ? "Embeddings follow reduced motion"
+                : paused
+                  ? "Resume embedding animation"
+                  : "Pause embedding animation"
+            }
+          >
+            {paused ? (
+              <Play size={15} aria-hidden="true" />
+            ) : (
+              <Pause size={15} aria-hidden="true" />
+            )}
+          </button>
+        </AnimationMotionControls>
       </div>
       <div
         className={articleTabs.tabs}

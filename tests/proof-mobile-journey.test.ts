@@ -287,7 +287,7 @@ test("parked mobile C17 preserves recognizable wing-to-body proportions", () => 
   );
 });
 
-test("rear-facing mobile T1 retains a rigid three-quarter camera at the requested yaw", () => {
+test("rear-facing mobile T1 retains its flight pose until it clears the gates", () => {
   // Independent worked landmarks for the unchanged T1 model at yaw1.7 and
   // scale0.85. World deltas are nose−aft=(-83,0,5), right−left wing=(0,-68,0),
   // and canopy−aft=(-35,8,21). Rotate in the ground plane, then project through
@@ -299,8 +299,7 @@ test("rear-facing mobile T1 retains a rigid three-quarter camera at the requeste
     [-17.491719, -38.507156],
   ];
   for (const example of ["pass", "fail", "error", "missing"] as const)
-    for (const selection of [3, 4, 4.5, 5, 6, 9]) {
-      if (example === "missing" && selection > 6) continue;
+    for (const selection of [3, 4, 4.5, 4.8125]) {
       const frame = journeyLifecycleFrames[example](1.7, selection, true);
       const hull = geometry(frame, "testament-ship-spacecraft-hull"),
         leftWing = geometry(frame, "testament-ship-spacecraft-wing-0"),
