@@ -12,6 +12,65 @@ const alphabetical = [
   "Introducing Vorpal",
 ];
 
+test("post rows keep content inset within the hover surface on every shared list", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const route of [
+    "/blog",
+    "/",
+    "/projects/vorpal",
+    "/blog/agentic-proof-of-work",
+  ]) {
+    await page.goto(route);
+    await page.evaluate(() => document.fonts.ready);
+    for (const width of route === "/blog"
+      ? [320, 390, 768, 1440]
+      : [390, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      const rows = page.locator(".post-row > a");
+      expect(await rows.count(), route).toBeGreaterThan(0);
+      await rows.first().hover();
+      const spacing = await rows.evaluateAll((links) =>
+        links.map((link) => {
+          const bounds = link.getBoundingClientRect();
+          const children = Array.from(link.children, (child) =>
+            child.getBoundingClientRect(),
+          );
+          const style = getComputedStyle(link);
+          return {
+            left: Math.min(...children.map((box) => box.left)) - bounds.left,
+            right: bounds.right - Math.max(...children.map((box) => box.right)),
+            top: Math.min(...children.map((box) => box.top)) - bounds.top,
+            bottom:
+              bounds.bottom - Math.max(...children.map((box) => box.bottom)),
+            paddingLeft: parseFloat(style.paddingLeft),
+            paddingRight: parseFloat(style.paddingRight),
+          };
+        }),
+      );
+      for (const row of spacing) {
+        const inset = width < 768 ? 18 : 24;
+        expect(row.paddingLeft).toBe(inset);
+        expect(row.paddingRight).toBe(inset);
+        expect(row.left).toBeGreaterThanOrEqual(inset - 0.5);
+        expect(row.right).toBeGreaterThanOrEqual(inset - 0.5);
+        expect(row.top).toBeGreaterThanOrEqual(24);
+        expect(row.bottom).toBeGreaterThanOrEqual(24);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      if (route === "/blog")
+        await page
+          .locator(".post-list")
+          .screenshot({ path: testInfo.outputPath(`post-rows-${width}.png`) });
+    }
+  }
+});
+
 test("blog defaults to newest first and composes all sort modes with search and categories", async ({
   page,
 }) => {

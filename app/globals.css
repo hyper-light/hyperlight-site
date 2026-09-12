@@ -855,10 +855,10 @@
 }
 .post-row > a {
   display: grid;
-  grid-template-columns: 154px 1fr 110px;
+  grid-template-columns: 154px minmax(0, 1fr) 110px;
   gap: 22px;
   align-items: center;
-  padding: 31px 0;
+  padding: 31px 24px;
   transition: background 0.2s;
 }
 .post-row:hover > a {
@@ -2158,6 +2158,7 @@ html[data-motion="paused"] .study-stage {
     grid-template-columns: minmax(0, 1fr) 22px;
     gap: 12px;
     padding-block: 25px;
+    padding-inline: 18px;
   }
   .post-row-date {
     grid-column: 1 / -1;
