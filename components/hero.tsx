@@ -18,9 +18,8 @@ export function Hero() {
           <span>Any agent.</span>
         </h1>
         <p>
-          Good tools get out of your way.
-          <br className="hidden sm:block" /> We build the infrastructure that
-          lets you do more—from your laptop to whatever comes next.
+          We build the infrastructure that lets you do more
+          <br className="hidden sm:block" />from your laptop to whatever comes next.
         </p>
         <div className="hero-actions flex flex-wrap items-center gap-3">
           <Button asChild>
