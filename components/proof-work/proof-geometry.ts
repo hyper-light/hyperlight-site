@@ -8,6 +8,12 @@ export type ProofPath = {
   tone?: ProofTone;
   /** Fixed stroke pattern, such as a disputed geographic boundary. */
   dashArray?: string;
+  /** Opt-in solid surfaces; existing wireframe figures retain their materials. */
+  material?: "paper" | "circuit" | "metal" | "silicon" | "shadow" | "emissive";
+  fillOpacity?: number;
+  /** Optional directional surface lighting for opaque dimensional hulls. */
+  fillColor?: string;
+  strokeOpacity?: number;
 };
 
 export type ProofLabel = {

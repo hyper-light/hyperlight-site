@@ -34,7 +34,14 @@ function paint(svg: SVGSVGElement, nodes: SceneNodes, time: number) {
     const element = nodes.paths[index];
     element.setAttribute("d", path.d);
     element.setAttribute("opacity", path.opacity.toFixed(3));
-    element.style.stroke = color(path.tone) ?? "";
+    if (path.fillOpacity !== undefined)
+      element.setAttribute("fill-opacity", path.fillOpacity.toFixed(3));
+    if (path.fillColor !== undefined)
+      element.setAttribute("fill", path.fillColor);
+    if (path.strokeOpacity !== undefined)
+      element.setAttribute("stroke-opacity", path.strokeOpacity.toFixed(3));
+    element.style.stroke =
+      path.material === "shadow" ? "none" : (color(path.tone) ?? "");
     if (path.kind === "light")
       element.setAttribute(
         "stroke-dashoffset",
@@ -100,6 +107,7 @@ export function ProofScene({
   paused,
   stepDuration = 0,
   transitionLimit,
+  height,
 }: {
   frame: ProofFrameFunction;
   selection: number;
@@ -108,6 +116,8 @@ export function ProofScene({
   stepDuration?: number;
   /** Optional duration cap for direct stage selection, independent of distance. */
   transitionLimit?: number;
+  /** A larger physical assembly may need extra room without shrinking its lettering. */
+  height?: number;
 }) {
   const ref = useRef<SVGSVGElement>(null);
   const previousSelection = useRef(selection);
@@ -175,7 +185,7 @@ export function ProofScene({
     <svg
       ref={ref}
       className={portrait ? styles.portrait : styles.landscape}
-      viewBox={portrait ? "0 0 420 740" : "0 0 800 520"}
+      viewBox={`0 0 ${portrait ? 420 : 800} ${height ?? (portrait ? 740 : 520)}`}
       data-proof-scene=""
       data-portrait={String(portrait)}
       data-proof-target={selection}
@@ -210,6 +220,29 @@ export function ProofScene({
           <stop stopColor="#94acc1" stopOpacity=".055" />
           <stop offset="1" stopColor="#94acc1" stopOpacity="0" />
         </radialGradient>
+        {(
+          [
+            ["paper", "#6b7c89", "#1c2631", "#354250"],
+            ["circuit", "#344d50", "#111d25", "#253342"],
+            ["metal", "#6c788b", "#222c3a", "#42475b"],
+            ["silicon", "#303747", "#0c111b", "#242033"],
+            ["shadow", "#020407", "#020407", "#020407"],
+            ["emissive", "#b7e3d6", "#669daa", "#b8b0dc"],
+          ] as const
+        ).map(([name, start, middle, end]) => (
+          <linearGradient
+            key={name}
+            id={`${prefix}-${name}`}
+            x1="0"
+            y1="0"
+            x2=".85"
+            y2="1"
+          >
+            <stop stopColor={start} />
+            <stop offset=".48" stopColor={middle} />
+            <stop offset="1" stopColor={end} />
+          </linearGradient>
+        ))}
       </defs>
       <ellipse
         cx={portrait ? 210 : 400}
@@ -223,17 +256,25 @@ export function ProofScene({
           key={path.id}
           data-proof-path={path.id}
           data-proof-kind={path.kind}
+          data-proof-material={path.material}
           className={styles[path.kind]}
           d={path.d}
           // Match paint() precision across server V8 and browser engines.
           opacity={path.opacity.toFixed(3)}
           fill={
-            path.kind === "glass" || path.kind === "shade"
-              ? `url(#${prefix}-glass)`
-              : "none"
+            path.fillColor ??
+            (path.material
+              ? `url(#${prefix}-${path.material})`
+              : path.kind === "glass" || path.kind === "shade"
+                ? `url(#${prefix}-glass)`
+                : "none")
           }
+          fillOpacity={path.fillOpacity}
+          strokeOpacity={path.strokeOpacity?.toFixed(3)}
           stroke={`url(#${prefix}-prism)`}
-          style={{ stroke: color(path.tone) }}
+          style={{
+            stroke: path.material === "shadow" ? "none" : color(path.tone),
+          }}
           vectorEffect="non-scaling-stroke"
           pathLength={path.kind === "light" ? 200 : undefined}
           strokeDasharray={

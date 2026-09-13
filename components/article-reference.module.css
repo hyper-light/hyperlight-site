@@ -1,0 +1,166 @@
+.reference {
+  display: inline;
+}
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: text-bottom;
+  width: 28px;
+  height: 28px;
+  margin: 0 2px;
+  color: #abb9cf;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.trigger:hover,
+.trigger:focus-visible {
+  background: #abb9cf18;
+  border-color: #abb9cf66;
+}
+.content {
+  z-index: 110;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(560px, var(--radix-popover-content-available-height));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  border: 1px solid #526078;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #182029, #101318 70%);
+  box-shadow: 0 12px 40px #0007;
+  color: #d9e0e8;
+  font: 14px/1.6 var(--font-sans);
+  overflow-wrap: anywhere;
+}
+.content * {
+  box-sizing: border-box;
+}
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.header h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 500 17px/1.35 var(--font-sans);
+  color: #f0f2f5;
+}
+.close,
+.exampleControls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #78899e55;
+  border-radius: 50%;
+  background: transparent;
+  color: #c6d0dd;
+  cursor: pointer;
+}
+.close {
+  margin-top: -5px;
+}
+.content p {
+  margin: 0 0 14px;
+}
+.code,
+.exampleContent {
+  font: 12px/1.65 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 14px 0;
+  padding: 12px;
+  border-left: 2px solid #97bdb4;
+  color: #c8d7e3;
+  background: #0a0c0f;
+}
+.code code,
+.exampleContent code {
+  font: inherit;
+  color: inherit;
+}
+.source {
+  display: inline-block;
+  color: #c2b7d7;
+  text-underline-offset: 4px;
+  text-decoration: underline;
+  padding: 8px 0;
+}
+.example {
+  border-top: 1px solid #78899e44;
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.exampleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #9eacc0;
+  font-size: 12px;
+}
+.exampleControls {
+  display: flex;
+  gap: 6px;
+}
+.example strong {
+  font-weight: 500;
+}
+.exampleContent {
+  min-height: 66px;
+  animation: reveal 250ms ease-out;
+}
+.example p {
+  min-height: 44px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.next {
+  border: 0;
+  background: transparent;
+  color: #c6d4e5;
+  padding: 10px 0;
+  font: inherit;
+  cursor: pointer;
+}
+.content button:focus-visible,
+.content a:focus-visible,
+.trigger:focus-visible {
+  outline: 2px solid #c6d4e5;
+  outline-offset: 3px;
+}
+@keyframes reveal {
+  from {
+    opacity: 0.4;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .exampleContent {
+    animation: none;
+  }
+}
+@media (pointer: coarse) {
+  .trigger {
+    width: 36px;
+    height: 36px;
+  }
+  .close,
+  .exampleControls button {
+    width: 44px;
+    height: 44px;
+  }
+}

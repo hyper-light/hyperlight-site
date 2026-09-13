@@ -4,6 +4,7 @@ import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import type { Root as MarkdownRoot } from "mdast";
 import type { Root } from "hast";
+import { remarkReferenceNotes } from "./remark-reference-notes";
 
 /** Components belong in our registry, not imports embedded in an article. */
 function repositoryComponents() {
@@ -34,7 +35,20 @@ export async function compilePostMdx(
         format: "mdx",
         outputFormat: "function-body",
         development: false,
-        remarkPlugins: [remarkGfm, repositoryComponents],
+        remarkPlugins: [
+          remarkGfm,
+          repositoryComponents,
+          [
+            remarkReferenceNotes,
+            {
+              post:
+                filename
+                  .split(/[\\/]/)
+                  .at(-1)
+                  ?.replace(/\.mdx$/, "") ?? filename,
+            },
+          ],
+        ],
         rehypePlugins: [
           [rehypeSlug, { prefix: "heading-" }],
           [rehypeHighlight, { detect: false, ignoreMissing: true }],

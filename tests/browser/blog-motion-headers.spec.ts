@@ -17,7 +17,11 @@ for (const post of posts) {
     );
     const count = await headers.count();
     // Both animated articles must be covered, not just the combined lifecycle.
-    if (post === "agentic-proof-of-work" || post === "introducing-vorpal")
+    if (
+      post === "agentic-proof-of-work" ||
+      post === "introducing-vorpal" ||
+      post === "introducing-slates"
+    )
       expect(count).toBeGreaterThan(1);
 
     for (const width of [320, 390, 700]) {

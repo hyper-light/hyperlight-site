@@ -1,0 +1,38 @@
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 24px;
+  border-top: 1px solid #252d37;
+  border-bottom: 1px solid #252d37;
+}
+.controls label {
+  font-family: var(--font-mono), monospace;
+  color: #aab6c5;
+  font-size: 12px;
+}
+.controls select {
+  min-width: 0;
+  max-width: 230px;
+  padding: 10px 30px 10px 12px;
+  border: 1px solid #34404d;
+  border-radius: 5px;
+  background: #0d1219;
+  color: #d1dce7;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 12px;
+}
+.controls select:focus-visible {
+  outline: 2px solid #bfd0e4;
+  outline-offset: 3px;
+}
+@media (max-width: 560px) {
+  .controls {
+    padding: 14px 17px;
+    gap: 12px;
+  }
+  .controls select {
+    max-width: 210px;
+  }
+}

@@ -28,7 +28,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  padding: 24px 24px 0;
+  /* The header owns clearance from both custom controls and the scene below it. */
+  padding: 24px;
 }
 .figure .eyebrow {
   margin: 8px 0 17px;
@@ -250,7 +251,7 @@
     display: block;
   }
   .header {
-    padding: 18px 17px 0;
+    padding: 18px 17px 24px;
     gap: 12px;
   }
   .figure .eyebrow {

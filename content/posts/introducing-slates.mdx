@@ -1,0 +1,450 @@
+---
+title: "Introducing Slates"
+description: "Private in-memory workspaces, operation-based merges, and a distributed filesystem that carries the same work across regions."
+date: "2026-09-12"
+category: "Engineering"
+project: "slates"
+featured: true
+draft: false
+---
+
+Two agents change an image-processing service. Agent 1 adds WebP support; Agent 2 updates its cache handling. They need to edit and test independently, then combine their work. In a shared checkout, Agent 2's test could read a decoder that Agent 1 has only half rewritten. Giving each agent a separate copy avoids that problem, but someone still has to merge the results and decide what reaches the developer's files.
+
+**Slates gives each agent a private, in-memory filesystem and merges its recorded file operations into a shared version.** Both agents start from the same source without duplicating all its content. Each can change files without interrupting the other. When they submit, compatible edits combine; competing edits return a conflict without overwriting work already accepted. A human approves the final write to disk.
+
+The agents can also run on different machines. Each submission goes to the [shared volume's owner][architecture], which orders the changes. When the caller requests host-loss protection, replicas retain the records and content another machine needs to take over. The agent should be able to retry a lost request and continue its work, rather than guess whether its last change happened.
+
+Slates checks whether file operations can combine. Tests and review still have to establish whether the combined service actually decodes WebP and handles its cache correctly.
+
+<SlatesOrbitalFleet />
+
+## Building on EdenFS
+
+Agent 1 needs the image decoder, not a fresh copy of every file in the repository. [EdenFS][eden-overview] already makes that distinction: it presents ordinary paths, fetches content when a tool accesses it, and keeps local changes separate from source control.
+
+EdenFS can list `/src` without downloading all the files beneath it because its [directory trees refer to immutable objects][eden-model]. Reading `/src/image.rs` fetches its content. Editing it creates private overlay content, which EdenFS calls **materialization**. Its parent directories record the changed child up to an already-materialized ancestor; unrelated files stay untouched. Merely [loading a file or tracking its inode][eden-inodes] does not materialize a private copy.
+
+Slates uses the same separation between a base and private changes. Its [overlay also records which base content an edit used][eden-decision], so it can detect an outside edit before writing back to a live source directory. Slates keeps its private data in RAM; [EdenFS's overlay stores it on disk][eden-storage].
+
+For the two agents, the next step is to share a starting snapshot and retain only their independent changes. Slates then records enough about those changes to merge them, rather than leaving the caller with two unrelated directory copies.
+
+## Creating a Workspace
+
+To let an agent work on an existing project without changing its files, create an overlay. With the daemon started by `slates anchor`, run:
+
+```sh
+slates volume create image-work --bounded 4GiB --base /Users/you/project
+```
+
+The command returns a volume ID. To mount that volume at an existing, user-owned directory:
+
+```sh
+slates mount VOLUME_ID /Users/you/mounts/image-work
+```
+
+Replace `VOLUME_ID` with the ID returned by [the create command][cli]. The agent can now run Git, its compiler and its tests against the mount path. A [filesystem bridge][bridges] passes those ordinary file calls to Slates' **virtual filesystem (VFS)**. An SDK client can use the same volume without mounting it.
+
+Creating the overlay does not scan or copy the repository. When the agent opens a path, Slates checks its private changes first and otherwise reads from the source directory. The agent brings content into memory as it uses it.
+
+That convenience has a limit: an untouched file still backed by the live directory can change underneath the agent. For a fixed starting point, a [complete capture][base] requires either stopping source writers or reading from an immutable filesystem view. If neither is available, Slates returns `ConsistentBaseUnavailable`. Checking timestamps file by file would not make a changing directory into one consistent version.
+
+## File Names and Open Handles
+
+Suppose Agent 1 renames `image.rs` to `codec.rs` while a tool has the file open. The tool must keep reading the same file. Slates [changes the directory entry, not the file's inode][vfs]:
+
+```text
+Before rename:  /src/image.rs   → inode 41
+Open handle:                       inode 41
+
+After rename:   /src/codec.rs   → inode 41
+Open handle:                       inode 41
+```
+
+The number `41` is illustrative. A second hard link would refer to that same inode. Removing either name would leave the file available through the other link or an open handle.
+
+The same rules apply whether the agent uses a mount, an SDK or a remote connection. Even [case folding and name lookup belong to the volume][vfs], so switching clients does not change which file a path identifies.
+
+Renaming a directory also should not copy its entire contents. Slates records an overlay redirect and hides the old name with a **whiteout**. Deleting a base file similarly hides it from the agent without deleting the developer's source file. If that live source later differs from the recorded fingerprint, [Slates reports `BaseDrift`][vfs] for the affected unpinned content instead of silently treating it as the original. Pinned content and private edits remain available.
+
+<SlatesNamespace />
+
+## Snapshots and Independent Copies
+
+Both agents need the same starting files, but neither should see the other's unfinished edits. For this example, they use a captured or immutable base and clone the same snapshot into private volumes. The clones initially share that content. Snapshotting a live overlay alone would not freeze untouched files in its external source directory.
+
+Before publishing the snapshot, Slates must collect writes still waiting in contributing kernel or guest caches. Its [**attachment barrier**][attachment-barrier] flushes those caches and finishes their accepted requests. Writes after the barrier belong to the next generation. If a participant cannot finish, Slates refuses the snapshot rather than calling it complete. The barrier cannot include bytes an application has not submitted.
+
+When Agent 1 changes the decoder, [copy-on-write][snapshots] preserves the old content for Agent 2. Only the affected structures are copied; the rest stay shared. Agent 1 can discard its attempt without deleting anything Agent 2 or a retained snapshot still needs.
+
+<SlatesWorkspace />
+
+An agent can try several implementations from the same starting point. Each new clone [retains the snapshot's roots instead of copying its files][vfs-bench], so adding another attempt does not require duplicating the repository. Reading files and running the agent still take time; sharing removes the full-tree copy from that work.
+
+## Storing and Writing File Content
+
+An agent changing a few bytes in a large file should not need another full copy of that file. Slates tracks larger files as [**extents**][vfs]: ranges backed by stored chunks, the base file or zero-filled space. An edit replaces the affected ranges and leaves the others shared. A sparse hole reads as zeroes without storing a buffer full of zeroes.
+
+Writes into shared, sealed content copy the touched page-multiple range into mutable storage. A two-byte change can therefore copy more than two bytes, but it does not copy the whole file. Repeated writes can update that private storage without repeatedly copying the shared original.
+
+When the agent seals its work, Slates makes those chunks immutable and computes their [BLAKE3 identities][content]. Matching, verified chunks can share storage. This happens as content is sealed, not by hashing the whole file on every write.
+
+Those identities also let a remote machine request only chunks it lacks and verify the bytes it receives. To combine accepted changes, the merge engine [splices references to the original and submitted extents][splice]; it need not allocate another full-file buffer just to join them.
+
+## Memory Limits and Shared Content
+
+Sharing makes additional attempts cheaper, but their future writes still need room. Three agents can share one 1 MiB chunk today and each replace it with different content tomorrow. Slates must [reserve for those independent writes][memory], not promise the same free memory to all three.
+
+The volume counters help distinguish those cases. Each clone reports 1 MiB of **referenced bytes**, even while the host stores only one shared copy. A fresh clone reports zero **unique bytes**; that counter tracks content created since its clone origin or latest snapshot, [not the volume's physical RAM use][accounting]. Deduplication can reduce physical use without reducing the amount of content a volume references.
+
+The earlier `--bounded 4GiB` request reserves capacity for the admitted quota, including copy-on-write. A dynamic volume instead grows within its maximum as capacity permits. Slates also [accounts for the cost of operating the filesystem][memory]: creating thousands of empty files consumes metadata, and receiving a large file needs buffer space even before the file is complete.
+
+If the required capacity is unavailable, Slates [refuses the operation before publishing its effect][memory]. It keeps room to finish or cancel outstanding work rather than using the last available bytes for new requests. Remote holders make their own reservations; space available on the agent's machine does not imply that a replica can accept its submission.
+
+## Recording File Operations
+
+To combine the agents' work, Slates needs to know what each changed and which version it started from. It calls the shared version history a **green** volume and each agent's private copy a **work** volume. “Green” does not mean the code passed its tests.
+
+Suppose Agent 1's WebP change includes raising the image quality setting. Slates [records the byte operation as it happens][operations]:
+
+```text
+File:       image.conf
+Base:       quality=80\ncache=off\n
+Operation:  replace [8, 10) with 90
+Result:     quality=90\ncache=off\n
+```
+
+Offsets are zero-based bytes; `[8, 10)` includes bytes 8 and 9, the `80` in `quality=80`. Here `\n` represents one newline byte. A Unicode character may occupy several bytes, so character counts are not interchangeable with these coordinates.
+
+Knowing only that `image.conf` changed would not tell Slates whether Agent 2 touched the same setting. [EdenFS's change journal][eden-journal] lets tools find changed paths without scanning the whole tree; Slates also retains the byte ranges and distinguishes writes from operations such as rename or truncate. The merge engine can then compare the actual operations instead of guessing them from the final files.
+
+At seal, Slates [combines the recorded operations relative to the base][derive]. An agent can [insert temporary content and delete it again][derive-tests] without submitting both steps as lasting changes. The submission describes what remains changed, so the other agent does not have to merge discarded intermediate edits.
+
+The way a tool writes matters. If it truncates and rewrites a whole file, Slates records that replacement even if a text diff would show only one changed line. A precise edit gives the merge engine a smaller range to check; rewriting everything can conflict with otherwise unrelated work in that file.
+
+The submitted **increment** [binds the operations to their base and sealed result][operations]. Another node can use those exact inputs to check the merge. The descriptor does not replace the file content: the required holders must also retain and verify the referenced bytes before committing a replicated version.
+
+## Adjusting Edit Positions
+
+An earlier submission can move the bytes another agent intends to edit without changing those bytes. In this case, Agent 1 adds a format line while Agent 2 changes the existing quality setting:
+
+```text
+Base:                      quality=80\ncache=off\n
+Insert at byte 0:          format=webp\n             (12 bytes)
+Current head:              format=webp\nquality=80\ncache=off\n
+
+Agent 2's original range:  [8, 10)  → 80
+Range at new head:        [20, 22) → 80
+Agent 2 replaces it:       format=webp\nquality=90\ncache=off\n
+```
+
+Agent 2 does not need to find the setting again just because Agent 1 inserted a line. Slates [maps its recorded range through the accepted operations][position-map]. The twelve-byte insertion moves `[8, 10)` to `[20, 22)`, so the owner changes the original `80` and preserves the new format line. Searching for the text `80` could select a different occurrence; mapping follows the original edit instead.
+
+Not every change can be mapped safely. If another agent deleted the position where Agent 2 intended to insert, Slates records that loss for conflict checking rather than choosing a nearby position. Replacing the file with a different object or type also requires a conflict check.
+
+<SlatesOperationMap />
+
+## Accepting or Rejecting a Merge
+
+Now consider two changes to the existing settings. Agent 1 raises `quality=80` to `quality=90`; Agent 2 enables `cache=on`. They can run on separate worker nodes, each retaining its private copy. Their submissions go to green's owner, which accepts them in order. Because the edits affect separate ranges, the accepted file can contain both.
+
+If Agent 2 instead changes the same original `80` to `60`, accepting it would overwrite Agent 1's `90`. The owner returns a conflict and leaves the accepted version alone. If both agents wrote `90`, the overlapping bytes already match and the owner can accept the second write as identical.
+
+<SlatesMerge />
+
+The [conflict result][verdict] identifies the path, ranges and kind of conflict. Slates does not insert conflict markers into the file. It also checks operations beyond byte writes: one agent deleting a file while another modifies it cannot be treated as two unrelated changes. Identical acceptance compares the overlapping range, so an unrelated edit elsewhere does not prevent a match.
+
+An accepted submission produces a new version that identifies both the increment and its resulting content. An agent can also [rebase its private work against the current head][merge-engine] using the same checks. Rebase alone does not publish that work; submission is still a separate step.
+
+Acceptance is not a test result. Agent 1 could rename an interface while Agent 2 adds a caller in another file. The byte ranges would not conflict, but the combined program would still be broken.
+
+### Resolving Overlapping Agent Edits
+
+Agent 2 needs enough information to make a new decision. In the conflicting quality edit, it receives the original `80`, the accepted `90` and its proposed `60`. The shared file keeps `90`; its private work keeps `60`. Neither change disappears.
+
+Agent 2 reads the accepted version and starts fresh work from that head. After reviewing why the values differ, it chooses `85`, tests that choice and [submits a new increment][merge-engine]. Slates does not calculate `85` or silently reapply the rejected `60`. The agent is making a new edit against `90`.
+
+The owner checks that submission again. If no intervening edit conflicts, it accepts the revised file. If another agent changed the same bytes in the meantime, Agent 2 gets another conflict to inspect.
+
+<SlatesConflictResolution />
+
+## Processing Writes on One Owner
+
+When both agents submit, they must agree on which change was accepted first. Slates gives each volume one owning shard, served by one runtime thread. That thread applies the volume's operations in order. Other cores send it requests rather than modifying the same live state concurrently.
+
+<SlatesOwnership />
+
+This does not serialize every agent in the fleet. [Different shards process their volumes independently][runtime], and other cores can read pinned, sealed chunks because their content cannot change. Contention on one volume need not become a global filesystem lock.
+
+An agent making many small file requests also should not need a socket exchange and thread wakeup for each one. Local clients use shared-memory rings. A busy shard can keep taking requests from the ring; when idle, it parks. The runtime measures wake cost to decide how long to spin before parking, trading CPU time against wakeup delay.
+
+That tradeoff affects how many agents a worker can run. [Spinning clients consume CPU][provision-bench]; adding more clients than the machine can run makes them compete for time. A fast local request path does not remove the need to budget CPU for the agents and their builds.
+
+## Recovering After a Daemon Restart
+
+Agent 1 asks Slates to create a snapshot. The daemon creates it, then crashes before replying. The agent now has an unanswered request, not evidence that the snapshot failed. Retrying must return the snapshot already created, not create a second one.
+
+Slates [records the operation's effect and its completion together][completion]. A separate **anchor** process keeps the shared memory alive while replacing the daemon. The replacement [rebuilds the volume from that retained state][recovery], including the result needed to answer the retry. The agent reuses the same request ID and receives the original snapshot.
+
+<SlatesRecovery />
+
+With the anchor and its RAM still intact, the agent [keeps its volume after the daemon restarts][client-tests]. It can continue from the recovered state instead of recreating the workspace. If required content is missing, recovery fails rather than giving the agent an incomplete set of files.
+
+Losing the host is different: its RAM is gone. Continuing after a machine or region fails requires verified copies elsewhere; surviving loss of every RAM copy requires an export or an approved write to persistent storage.
+
+## Routing Requests Across Regions
+
+Move Agent 2 to Singapore while the shared volume remains owned in Virginia. Its local worker [forwards submissions to the current owner][routing]; it does not apply a competing local write. The volume keeps one acceptance order regardless of where the agents connect.
+
+Agent 2 can also [read through its local worker when the volume's owner is remote][forwarding-tests]. The object ID identifies its original owner; committed configuration records redirect requests if ownership has moved. A stale route can be refreshed within a bounded retry budget, without changing the authenticated caller or request ID.
+
+The lost-reply case still applies across that route. If Virginia creates snapshot S7 but the reply never reaches Singapore, retrying the same request must return S7. Opening a new connection must not turn it into a request for S8.
+
+A nearby host may serve retained snapshot content to Agent 2 without owning the writable volume. Having a readable copy lets it answer those reads; it does not authorize it to accept new mutations.
+
+## Fleet Membership and Ownership
+
+Virginia's owner can accept Agent 2's write without asking every region to vote on it. The [fleet configuration][register-design] already identifies the authorized owner and eligible replica holders. Consensus is needed to change that authority, not to elect an owner for each file operation.
+
+The owner still has to meet the requested replication requirement. It proposes the accepted value to eligible holders and waits for a **quorum**: enough distinct holders to commit it. An [object register retains the current value, while green's ledger retains the ordered versions][register]. Those records let the service recover which changes were accepted after an owner fails.
+
+The decisions are separate:
+
+| Mechanism                       | Decision                                                                    | Participants                                                      |
+| ------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Owning shard                    | Apply an authorized VFS operation in order.                                 | The volume's owner; other cores send it messages.                 |
+| Object register or green ledger | Retain an accepted value under the current authority.                       | The object's eligible holder candidates.                          |
+| Regional council                | Commit regional membership, placement configuration and takeover authority. | A regional Raft voter set; other hosts learn its committed state. |
+| Root configuration              | Commit region membership, moved homes and region-loss promotion.            | A cross-region Raft voter set.                                    |
+
+A worker need not be a council voter to serve an agent's files. It follows the committed configuration. The [regional council][council] can authorize a replacement within its region; the [root group][root-group] authorizes changes such as promoting another region after the home region is lost.
+
+## Detecting Failed Hosts
+
+A slow reply must not let two machines start accepting writes as the same owner. Slates first uses [SWIM probes][membership] to detect an unreachable peer. A missed direct ACK triggers indirect probes through other members. If those also fail, the peer becomes `Suspect`; it becomes `Dead` only after the suspicion window expires. One missed ACK does not [remove the host or close its session][probe-session].
+
+If Virginia's owner is still running, it can refute the suspicion by increasing its incarnation number and sending `Alive`. If several distinct peers instead confirm the suspicion, the detector can shorten the wait; repeated reports from one observer do not count as independent confirmations.
+
+Sometimes the observer is the slow machine. If Singapore is struggling to process its own probes, Lifeguard gives its peers more time before declaring them dead. Measured network latency also helps select an indirect relay that can reach Virginia promptly, rather than treating every possible relay as equally close.
+
+An ongoing transfer can be slow without being stuck. Slates [tracks actual progress before extending its deadline][progress], such as newly verified chunks. Extensions are bounded: a stalled operation or one that exhausts its allowance times out. A reachable quorum can finish without waiting for every candidate, but a timeout never lowers the number of acknowledgements required.
+
+Declaring a peer dead still does not authorize its replacement to write. The configuration must commit the new owner, and holders must reject the old ownership epoch. This is **fencing**. A former owner that comes back online can refute a liveness report, but [it cannot regain write authority just by announcing that it is alive][register-design].
+
+## Replicating Content Before Committing a Version
+
+Suppose Agent 1's submission is accepted just before the owner fails. A replica with only the version number cannot recover the decoder. It needs the file content and the recorded inputs that produced that version.
+
+Submission first [flushes contributing caches and seals the work][submission-barrier]. The owner then sends the required holders a manifest of its content. Each holder reserves space, fetches missing chunks and verifies them. It [acknowledges placement only when all referenced content is available][placement]. A manifest pointing to missing bytes is not a usable copy.
+
+With `f = 1`, placement uses three eligible candidates and needs two verified holders to tolerate one failure within the declared failure domains. More generally, it requires `f + 1` acknowledgements from `2f + 1` candidates. [Candidate selection separates those failure domains][placement-domains]; two copies that disappear in the same failure would not provide the intended protection.
+
+Once the content is placed, the owner proposes the version record under its current ownership epoch. It commits after the required distinct acknowledgements. If a holder falls behind, transfer can try another eligible candidate. Two acknowledgements from one machine still count as one.
+
+Before serving the version, a holder [recomputes the merge result from the retained inputs][green-placement]. Missing inputs block serving; a different result causes refusal and an alarm. The recovered agent should receive the accepted file, not an unverified approximation.
+
+These guarantees apply to the sealed submission. An [automatic seal without a client barrier][auto-seal] includes only writes already visible to the server, not edits still sitting in a client's cache. Surviving loss of the entire home region also needs a copy outside that region.
+
+<SlatesFleet />
+
+## Surviving Host and Region Loss
+
+An accepted result should tell the caller which failures it can survive. Keeping two copies in Virginia can protect Agent 1's submission from one host failure; it cannot protect it from losing Virginia. The caller chooses a durability scope, and Slates waits for the copies required by that scope before replying.
+
+| Requested boundary       | What must be retained                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| Daemon restart           | Recoverable state and completion records in surviving anchor-owned RAM.                    |
+| Host loss                | Verified records and referenced content on sufficient surviving holders outside that host. |
+| Home-region loss         | The corresponding verified prefix and content in the required mirror region.               |
+| Loss of every RAM holder | A separately retained export or a granted landing onto persistent storage.                 |
+
+For Agent 2's request from Singapore, suppose Virginia is home and Frankfurt is the required mirror. With `f = 1` in each region, Virginia needs two of its three eligible candidates and Frankfurt needs two of its own three. Sending the request from Singapore does not make that worker a holder.
+
+Frankfurt must retain the accepted history through the requested version and [the content that history references][mirror]. The history through v7 is called its **prefix**: v7 and all earlier records. Merely receiving the newest record would leave gaps in recovery.
+
+[Waiting for mirror scope][durability] adds the time to catch up any backlog, transfer the content and complete Frankfurt's placement. That can take more than one wide-area round trip. A caller that accepts home-region completion can let the mirror catch up asynchronously, but then risks losing the unmirrored changes. Slates reports the mirror's lag; an unknown age is not reported as zero.
+
+If Virginia fails, [the root configuration can promote Frankfurt][mirror]. The replacement serves the verified mirrored history. Versions whose mirror barriers completed are included; newer home-only commits may be missing. The caller's durability choice therefore determines whether its last accepted submission is guaranteed to be there after region loss.
+
+## Reading Remote Snapshots and Changing Owners
+
+Agent 2 can start reading the accepted snapshot in Singapore without waiting for every file to be copied there. Its host [fetches the chunks it needs from recorded holders][distribution], verifies them and accounts for them locally. A clone keeps new edits in its own writable delta while reading unchanged content on demand.
+
+That does not make a live disk base portable. If an overlay still refers to uncaptured files on the developer's machine, replicating its private changes does not copy those source files. Losing the source host can still break reads of that base. Work that must continue without the source needs a complete verified capture.
+
+There is also a difference between retaining submissions and retaining every live edit. Ordinary writes stay on the owner between seals. A [live-shipping policy][migration] instead waits for the required holders before acknowledging that scope. If replicas cannot keep up, writes wait or are refused within the volume's limits; the service cannot promise replication while buffering without limit.
+
+If Agent 2 repeatedly writes from another host, Slates can move ownership once the write-intent threshold is reached. It seals and transfers the state, commits the new owner and generation, and only then lets that owner serve. Repeated remote writes can trigger the move; proximity or load alone does not give another machine permission to start writing.
+
+## Owner Failure and Recovery
+
+Suppose Virginia's owner stops after accepting v7. Its replacement cannot simply pick whichever replica responds first: that replica may still be at v6. It must recover the accepted state before it can handle the agents' next submissions.
+
+After configuration authorizes a successor at a newer ownership epoch, the successor asks holders to reject older proposals and report what they accepted. These replies are **promises**. With `f = 1`, it needs two of the three authorized candidates. Any two-of-three set overlaps the set that accepted the previous commit, so the replacement cannot gather its promises entirely from holders that missed it.
+
+For each position in the version history, the successor [adopts the highest accepted proposal consistent with the committed prefix][safe-adoption] and gets it accepted under the new epoch before serving. Even unchanged content needs that new acceptance record so a later recovery can correctly order the proposals.
+
+All affected candidates reject writes under the old epoch when they install the new configuration. Recovery need not wait for a powered-off candidate, but the resumed old owner cannot collect a quorum for another commit. Two machines may both be running; only the current owner can obtain the acknowledgements it needs to write.
+
+<SlatesAuthority />
+
+Changing the replica set requires similar care. During [joint reconfiguration][reconfiguration], writes need both old and new quorums. The configuration group retires the old set only after the new set holds the committed state and the owner acknowledges the new configuration. Copying data alone is not permission to stop using the old quorum.
+
+A host that loses its RAM [rejoins with a fresh boot identity][rejoin]. It cannot claim to be the old holder while missing that holder's content and stored epochs. This differs from a live peer refuting suspicion while retaining its state.
+
+An agent already reading a sealed snapshot [keeps that same version through the owner change][distribution]. Opening the latest head requires current serving authority; an existing immutable reader does not silently switch to newer files halfway through a test.
+
+## Network Transfers and Request Retries
+
+Agent 2's connection can drop while it sends a submission or waits for the reply. Slates must distinguish retrying that operation from starting another one. [Request identity stays independent of the connection][completion], so the owner can return the saved result over a new session. After reconnecting, the agent [reuses the original request ID][client-tests] instead of issuing a new operation that could repeat the change.
+
+File content travels over [TLS-authenticated sessions and encrypted datagrams][transport]. Lost frames are retransmitted. Cancelling a transfer retires its stream, so delayed frames cannot become a later request's reply on the reused connection. The agent can also [reconnect on a new session][transport-tests] without treating old-session traffic as new replies.
+
+A slow receiver also must not consume unbounded memory on either end. It advertises [buffer credits as an absolute byte limit][flow-control]. A limit of 8192 repeated twice still permits only bytes through offset 8192, not twice that amount. As the receiver consumes data, it can raise the limit. Large files pass through bounded windows rather than requiring a whole-file receive buffer.
+
+When queue or placement limits are exhausted, the sender waits or refuses more work. This makes a slow replica visible to the caller instead of hiding an ever-growing backlog in memory.
+
+<SlatesTransport />
+
+Saved completions have a lifetime too. The client acknowledges results through a sequence number, allowing Slates to release them and reject later retries of those acknowledged requests. The authenticated origin and client are part of each request's identity, so different clients can use the same sequence number without identifying the same request.
+
+Before any of this, a peer must [enroll in the fleet][enrollment], and operations must pass the volume's access checks. Knowing an ID or hash does not grant access. Nor does a private volume sandbox the whole agent: [processes, network access and paths outside the mount remain separate security concerns][security].
+
+## Writing Approved Changes to Disk
+
+The agents now have an accepted version to test, but the developer's source directory has not changed. To write the result there, Slates builds a **landing plan** for the selected snapshot and paths:
+
+```sh
+slates land VOLUME_ID /Users/you/project
+```
+
+The [plan's manifest][landing] identifies the exact proposed changes and their target. A human reviews it through a protected confirmation interface and issues a [grant bound to that manifest][grant]. An agent can request a landing through the SDK or MCP, but cannot approve its own disk write. Changing the selection means obtaining approval for the new manifest.
+
+Approval does not mean the disk stayed unchanged during the agent's work. Before replacing each entry, Slates compares the original witnessed bytes, the current disk content and the approved proposal:
+
+| Witnessed bytes | Disk now | Proposed bytes | Result                               |
+| --------------- | -------- | -------------- | ------------------------------------ |
+| `old`           | `old`    | `new`          | Apply the approved change.           |
+| `old`           | `new`    | `new`          | Accept identical content.            |
+| `old`           | `other`  | `new`          | Report the conflicting outside edit. |
+
+Slates serializes its own landings with a target lease, but that cannot stop a developer from saving through another editor. It therefore [checks each entry again during replacement][landing-tests] and synchronizes the required file and directory changes. An individual entry stays old or becomes new without torn content. A multi-file landing can still stop partway through on a conflict, so the caller must inspect the result rather than assume the whole directory changed atomically.
+
+<SlatesLanding />
+
+## Resolving a Disk Conflict
+
+Suppose the agents started from `quality=80` and agreed on `90`, but a developer changed the disk file to `60` while they worked. Landing must not erase that outside change. It returns a conflict and leaves the affected entry at `60`.
+
+Either an agent or a human can resolve it. They read the current disk content with `read_base`, compare it with the original `80` and proposed `90`, then choose the intended result. An agent might revise its private file and run tests; a human can edit it directly. Slates does not decide which value is correct.
+
+Only after that review should the caller [use `rewitness` to record the new comparison base][landing-tests]. It changes neither the proposal nor the disk. Blindly refreshing the witness would make the old proposal eligible to overwrite the outside edit without resolving why they differed.
+
+The reviewed proposal and new witness produce a new manifest, `M8`. A single-use grant for the rejected `M7` [cannot approve `M8`][grant], regardless of whether an agent or a person made the revision. A human must approve it, and landing checks the disk once more. Another outside edit can cause another conflict; approval is never permission to overwrite whatever happens to be there.
+
+## Combining Changes from Multiple Agents
+
+Agent 1 adds WebP to a format list; Agent 2 sets a cache lifetime. Each creates a work volume, edits its file and submits the result. Using a connected Python `AsyncClient`, both start from the same green version:
+
+```python
+green = await client.create_green("main")
+agent1 = await client.create_work(green, "agent1")
+agent2 = await client.create_work(green, "agent2")
+base = agent1["base"]
+assert agent2["base"] == base
+
+await client.edit(agent1["id"], "/formats.txt", 0, 0, b"webp\n")
+await client.edit(agent2["id"], "/cache.txt", 0, 0, b"ttl=300\n")
+
+accepted = {}
+for name, work in (("agent1", agent1), ("agent2", agent2)):
+    result = await client.submit(work["id"])
+    if not result["ok"]:
+        raise RuntimeError(f"{name}: {result['conflicts']}")
+    accepted[name] = result["version"]
+
+head = await client.versions(green)
+changed = await client.changed_since(green, base)
+
+assert head == accepted["agent2"]
+assert accepted["agent1"] < accepted["agent2"]
+print("Accepted version:", head)
+print("Changed paths:", sorted(changed))
+```
+
+Agent 2 does not have to discard its work when Agent 1 submits first. Its `/cache.txt` change does not overlap `/formats.txt`, so the owner can accept it against the newer head. With no other writers, the [returned versions and changed paths][python] confirm that the final head contains both submissions. A conflict takes the error branch instead; work already accepted remains intact.
+
+The resulting files are:
+
+```text
+/formats.txt     /cache.txt
+webp             ttl=300
+```
+
+These two files demonstrate the merge, not the implementation of a decoder or cache. Tests must check the application's behavior against this exact accepted version. Once that result is ready, a human can approve its landing back into the project. Neither a successful submission nor a passing test authorizes a Slates landing on its own.
+
+## Putting Slates to Work
+
+Slates lets agents work in parallel without sharing unfinished edits or copying the whole project for each attempt. Their changes can combine into one version to test and review. When they conflict, the author can revise its submission without destroying work already accepted.
+
+An agent can use [Vorpal](/blog/introducing-vorpal) to find the code, make its changes in Slates, and submit evidence for the resulting version through [agentic proof of work](/blog/agentic-proof-of-work). A reviewer can inspect that result before approving its landing. Agents can contribute independently; writing their selected changes back through Slates still requires human approval.
+
+[architecture]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L335-L498
+[eden-overview]: https://github.com/facebook/sapling/blob/main/eden/fs/docs/Overview.md
+[eden-journal]: https://github.com/facebook/sapling/blob/main/eden/fs/journal/Journal.h
+[eden-model]: https://github.com/facebook/sapling/blob/main/eden/fs/docs/Data_Model.md
+[eden-inodes]: https://github.com/facebook/sapling/blob/main/eden/fs/docs/Inodes.md#inode-materialization
+[eden-storage]: https://github.com/facebook/sapling/blob/main/eden/fs/docs/InodeStorage.md
+[eden-decision]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L707-L712
+[cli]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/cli.md
+[bridges]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1303-L1497
+[base]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L2313-L2347
+[vfs]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1175-L1290
+[handles]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/mem/src/handle.rs
+[snapshots]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L596-L605
+[attachment-barrier]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1429-L1438
+[vfs-bench]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/BENCHMARKS.md#L148-L175
+[content]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/vfs/src/content.rs
+[splice]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/splice.rs
+[memory]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L805-L903
+[accounting]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/vfs/src/volume.rs#L500-L510
+[operations]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L2628-L2665
+[derive]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/increment.rs
+[derive-tests]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/tests/derive.rs
+[position-map]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/map.rs
+[verdict]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/verdict.rs
+[merge-engine]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/engine.rs
+[runtime]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L904-L962
+[provision-bench]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/BENCHMARKS.md#L381-L416
+[recovery]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/recovery.md#L11-L62
+[completion]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/db/src/replay.rs
+[client-tests]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/client/tests/client.rs
+[routing]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/server/src/fleet.rs
+[forwarding-tests]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/server/tests/fleet.rs#L1217-L1280
+[register-design]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1579-L1869
+[membership]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/detector.rs
+[probe-session]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/swim.rs#L434-L460
+[council]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/config_group.rs
+[root-group]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/root_group.rs
+[progress]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/progress.rs
+[mirror]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1794-L1809
+[migration]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1959-L1972
+[reconfiguration]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/db/src/reconfig.rs
+[enrollment]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/enrollment.md
+[security]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L2171-L2228
+[placement]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/content.rs
+[placement-domains]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1782-L1792
+[submission-barrier]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L2569-L2571
+[auto-seal]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1940-L1944
+[green-placement]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1974-L1985
+[register]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/db/src/register.rs
+[safe-adoption]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1635-L1656
+[durability]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L666-L678
+[distribution]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L1927-L2039
+[rejoin]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L4529-L4540
+[transport]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/fleet-transport.md
+[flow-control]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/transport/src/flow.rs
+[transport-tests]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/transport/tests/session.rs
+[landing]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md#L2349-L2448
+[grant]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/land/src/grant.rs
+[landing-tests]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/land/tests/oracle.rs
+[python]: https://github.com/hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/sdk-python/tests/test_sdk_async.py#L142-L161

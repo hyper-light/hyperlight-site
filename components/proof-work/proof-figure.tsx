@@ -45,6 +45,7 @@ export function ProofFigure({
   mobileStageRail = false,
   reserveSteps = [],
   resetKey = id,
+  sceneHeights,
 }: {
   id: string;
   eyebrow: string;
@@ -65,6 +66,7 @@ export function ProofFigure({
   /** Reserve the tallest explanation across sibling views without running hidden scenes. */
   reserveSteps?: ProofStep[];
   resetKey?: string;
+  sceneHeights?: { landscape: number; portrait: number };
 }) {
   const [selected, setSelected] = useState(0);
   const [sequence, setSequence] = useState(autoAdvance);
@@ -235,6 +237,7 @@ export function ProofFigure({
           frame={frame}
           selection={selected}
           portrait={false}
+          height={sceneHeights?.landscape}
           paused={paused}
           stepDuration={activeStepDuration}
           transitionLimit={sequence ? undefined : seekDuration}
@@ -244,6 +247,7 @@ export function ProofFigure({
           frame={frame}
           selection={selected}
           portrait
+          height={sceneHeights?.portrait}
           paused={paused}
           stepDuration={activeStepDuration}
           transitionLimit={sequence ? undefined : seekDuration}

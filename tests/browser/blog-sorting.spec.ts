@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const newest = [
+  "Introducing Slates",
   "Agentic Proof of Work",
   "Introducing Vorpal",
   "Announcing Hyperlight",
@@ -9,6 +10,7 @@ const newest = [
 const alphabetical = [
   "Agentic Proof of Work",
   "Announcing Hyperlight",
+  "Introducing Slates",
   "Introducing Vorpal",
 ];
 
@@ -82,9 +84,16 @@ test("blog defaults to newest first and composes all sort modes with search and 
   const search = page.getByRole("searchbox", { name: "Search posts" });
   await expect(sort.locator("option:checked")).toHaveText("Newest first");
   await expect(titles).toHaveText(newest);
-  await expect(page.locator(".blog-catalog .post-row time")).toHaveCount(3);
-  for (const time of await page.locator(".blog-catalog .post-row time").all()) {
-    await expect(time).toHaveAttribute("datetime", "2026-09-10");
+  await expect(page.locator(".blog-catalog .post-row time")).toHaveCount(
+    newest.length,
+  );
+  for (const [index, time] of (
+    await page.locator(".blog-catalog .post-row time").all()
+  ).entries()) {
+    await expect(time).toHaveAttribute(
+      "datetime",
+      index === 0 ? "2026-09-12" : "2026-09-10",
+    );
   }
 
   await sort.focus();
@@ -99,6 +108,7 @@ test("blog defaults to newest first and composes all sort modes with search and 
   await page.getByRole("tab", { name: "Engineering", exact: true }).click();
   await expect(titles).toHaveText([
     "Introducing Vorpal",
+    "Introducing Slates",
     "Agentic Proof of Work",
   ]);
   await search.fill("vorpal");
@@ -106,6 +116,7 @@ test("blog defaults to newest first and composes all sort modes with search and 
   await page.getByRole("button", { name: "Clear post search" }).click();
   await expect(titles).toHaveText([
     "Introducing Vorpal",
+    "Introducing Slates",
     "Agentic Proof of Work",
   ]);
   await expect(sort.locator("option:checked")).toHaveText("Name Z–A");

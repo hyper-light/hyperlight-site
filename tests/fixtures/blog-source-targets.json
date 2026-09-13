@@ -1,0 +1,762 @@
+{
+  "checkedAt": "2026-09-12",
+  "scope": "Public sources cited by content/posts and native blog illustration captions. Immutable source contents were checked with git show; Sapling main heading was checked on its public rendered page.",
+  "documents": {
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/detector.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 993,
+      "contentSha256": "4d95cb8f677949112cb72951befb10c467f209315f9019af30ff3d73aab92339",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/swim.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 771,
+      "contentSha256": "35da5001faf1350bbd5ba2b7073e9d9e01bc78fffe53b421671113628518a99a",
+      "anchors": { "L434-L460": { "kind": "lines" } }
+    },
+    "facebook/sapling/blob/main/eden/fs/docs/Data_Model.md": {
+      "revision": "main",
+      "lineCount": null,
+      "contentSha256": null,
+      "anchors": {}
+    },
+    "facebook/sapling/blob/main/eden/fs/docs/Inodes.md": {
+      "revision": "main",
+      "lineCount": null,
+      "contentSha256": null,
+      "anchors": {
+        "inode-materialization": {
+          "kind": "heading",
+          "heading": "Inode Materialization"
+        }
+      }
+    },
+    "facebook/sapling/blob/main/eden/fs/docs/InodeStorage.md": {
+      "revision": "main",
+      "lineCount": null,
+      "contentSha256": null,
+      "anchors": {}
+    },
+    "facebook/sapling/blob/main/eden/fs/docs/Overview.md": {
+      "revision": "main",
+      "lineCount": null,
+      "contentSha256": null,
+      "anchors": {}
+    },
+    "facebook/sapling/blob/main/eden/fs/journal/Journal.h": {
+      "revision": "main",
+      "lineCount": null,
+      "contentSha256": null,
+      "anchors": {}
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/CONTEXT.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 54,
+      "contentSha256": "f8a797a9d42f9252f0560f9c9c8730a7e969fc1bed086f949df0e8ec560ccfc6",
+      "anchors": {
+        "language": {
+          "kind": "heading",
+          "heading": "Language"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-consensus/src/lib.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 1333,
+      "contentSha256": "adbc711b8d44a48f24654ee70b10157d6431aa019c71d95a10c43cc7502956f8",
+      "anchors": {
+        "L505": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-consensus/src/tests.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 810,
+      "contentSha256": "84693bf6c1e6af69c0464a57ed2ac3f07875bcb67d41d8cd94d63eeb032a2e93",
+      "anchors": {
+        "L497": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-evidence/src/validators.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 269,
+      "contentSha256": "d86b8e0beaae3267ff5bad89a155cb4208a4be5c9dd6c35dac67ab586f09a28c",
+      "anchors": {
+        "L175": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-model/src/lifecycle/aggregation_tests.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 1547,
+      "contentSha256": "684aa9dde457058405764512f85cf0302b0376cb82a3b4d0922ff029d76dd43a",
+      "anchors": {
+        "L244": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-model/src/lifecycle/artifact_descriptor_tests.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 1465,
+      "contentSha256": "fefbb30ce1df7c722de0a7dd0d0c77b60d8239d3e3ea2644470f75b02dde2f68",
+      "anchors": {
+        "L133": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-model/src/lifecycle/artifact_descriptor.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 729,
+      "contentSha256": "a7d48b2c5ceebc4557527bff64d656c787d09053d0431447702e3c84f4462eba",
+      "anchors": {
+        "L528": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/coordinates.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 175,
+      "contentSha256": "6eb7c561350756ec97aba5eb62b2facc3bc69853a4c8cc846b8b08651b0785e6",
+      "anchors": {
+        "L55": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/driver.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 1427,
+      "contentSha256": "2ce2e711cebf32dde66c21320c6635c0f790cc7fbc28451fcfb4972a5a6dd5da",
+      "anchors": {
+        "L1123": {
+          "kind": "lines"
+        },
+        "L1391": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/health.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 43,
+      "contentSha256": "922656ad76929b2f2b5be4d7864f2b8f2530a8d70c3aa346285c48cb75ca855a",
+      "anchors": {
+        "L6": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/liveness/suspicion.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 165,
+      "contentSha256": "9e1853cab1ff914114a3ea6f429b80890de9bba8944706657bdf2cf2d91a55b2",
+      "anchors": {
+        "L8": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/placement_agent.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 2519,
+      "contentSha256": "ad47219e3ef1adf675a6991a1ffd583a0bc15ad0970c698d767406d41da30b00",
+      "anchors": {
+        "L907": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/crates/focal-node/src/route_cache_host.rs": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 309,
+      "contentSha256": "c151eb38fe4ef0a4b4b7d0438340afa9b3e031c88a57cdc512adbc5a02403aef",
+      "anchors": {
+        "L245": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/02-domain-and-lifecycle.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 509,
+      "contentSha256": "5fa73698814655fca64cfe6e87aaba7877b4f6de4410ae0713de410845254d0f",
+      "anchors": {
+        "7-graph-satisfaction-and-parked-scopes": {
+          "kind": "heading",
+          "heading": "7. Graph satisfaction and parked scopes"
+        },
+        "1-scope-topology-and-durable-truth": {
+          "kind": "heading",
+          "heading": "1. Scope, topology and durable truth"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/04-storage-and-distribution.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 584,
+      "contentSha256": "2283ceae2a3fae874211305480a5698d08e15e2a7a03023d63713898984a680b",
+      "anchors": {
+        "L41": {
+          "kind": "lines"
+        },
+        "L298": {
+          "kind": "lines"
+        },
+        "L121": {
+          "kind": "lines"
+        },
+        "L508": {
+          "kind": "lines"
+        },
+        "L315": {
+          "kind": "lines"
+        },
+        "L400": {
+          "kind": "lines"
+        },
+        "L524-L545": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/09-implementation-status.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 8811,
+      "contentSha256": "e1679ad4063f70a4db0f6f8ea288b63c12c9e9f6e93faae68f38e2745202f1c6",
+      "anchors": {
+        "L7262": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/16-peer-validation-contract.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 421,
+      "contentSha256": "aa5ce14e5ac740ab1ccad6a41db06c3d8e9cb2dc38362f33f963c0d392850488",
+      "anchors": {
+        "4-supplying-and-invoking-validators": {
+          "kind": "heading",
+          "heading": "4. Supplying and invoking validators"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/17-lifecycle-state-and-authority.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 1112,
+      "contentSha256": "6cfaeeddbf9d2f3d99abdad801500b7fd44b30b6f1bd18dca63f3c3ec27edcd2",
+      "anchors": {
+        "3-claim-transitions": {
+          "kind": "heading",
+          "heading": "3. Claim transitions"
+        },
+        "5-response-testament-transitions-and-multiple-work-cycles": {
+          "kind": "heading",
+          "heading": "5. Response testament transitions and multiple work cycles"
+        },
+        "6-validation-target-phases-and-outcome-transitions": {
+          "kind": "heading",
+          "heading": "6. Validation target, phases and outcome transitions"
+        },
+        "7-aggregation-short-circuit-and-races": {
+          "kind": "heading",
+          "heading": "7. Aggregation, short-circuit and races"
+        },
+        "8-asymmetric-result-evidence-and-audit-closure": {
+          "kind": "heading",
+          "heading": "8. Asymmetric result evidence and audit closure"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/24-placement-execution-and-fleet-control.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 1092,
+      "contentSha256": "7e1a5a2913f28d67fe7f6dfe45d7d7eb433c823b252fe3f196702d1d149fb556",
+      "anchors": {
+        "L929": {
+          "kind": "lines"
+        },
+        "L763": {
+          "kind": "lines"
+        },
+        "L590": {
+          "kind": "lines"
+        },
+        "L634": {
+          "kind": "lines"
+        },
+        "12-liveness-probes-suspicion-extension-and-coordinates": {
+          "kind": "heading",
+          "heading": "12. Liveness: probes, suspicion, extension and coordinates"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/25-parallel-materialization-and-ranges.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 679,
+      "contentSha256": "3d50cd5aac46d86022428b7baff23430647f15c89928e545faa9779977cdddbe",
+      "anchors": {
+        "6-movement-r73-third-step-2026-09-09-the-state-machine-in-the-log": {
+          "kind": "heading",
+          "heading": "6. Movement (R7.3, third step, 2026-09-09): the state machine in the log"
+        },
+        "L673": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/focal/blob/626b1b59fa286ba4093e96f481afe38b8b061ede/docs/archictecutre/26-custody-archive-retention-and-restore.md": {
+      "revision": "626b1b59fa286ba4093e96f481afe38b8b061ede",
+      "lineCount": 644,
+      "contentSha256": "24d4e0d5d84a20ac72d5aaac472f0425936962481e3ca1be774915e7bbd29e9b",
+      "anchors": {
+        "L13": {
+          "kind": "lines"
+        },
+        "L525": {
+          "kind": "lines"
+        },
+        "L72": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/hecate/blob/103c0785d2623c19d0c02a450e94677bbfc70359/docs/architecture/LEDGER.md": {
+      "revision": "103c0785d2623c19d0c02a450e94677bbfc70359",
+      "lineCount": 452,
+      "contentSha256": "efa0b65995723406dc95e484c81d08e73f9fb04c255a7d642199a2520cd77cec",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/client/tests/client.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 380,
+      "contentSha256": "37ebe14daf4c183bf2b202d188b3d6fd792b321761334cec692f32b68287a2a6",
+      "anchors": {
+        "L223-L255": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/config_group.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 591,
+      "contentSha256": "5ed7d151ada7664488e5d18f8ff5e8924970c72e0721411ac601a2de25b426e6",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/content.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 1108,
+      "contentSha256": "f0e3196dc323c13fc34624d448ebb5a7a096c71574e47c58abd63c6b799b9e52",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/membership.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 270,
+      "contentSha256": "88ccf92082db32f45ba86308fe3a7ead2d666873900f75a48524deb5773b7c23",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/progress.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 278,
+      "contentSha256": "934bd32aef41f06843d39f26cafaafaa4dc9621b0d2d4d1609701e736e50c8a4",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/cluster/src/root_group.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 612,
+      "contentSha256": "6149baf35c4ec8deebede281d8a67ecddc3c3c046d7b6f43368d74a48e8667d2",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/db/src/reconfig.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 274,
+      "contentSha256": "b362d4cb656dde4f9ce760a37ccbcbf163e833a3418561f765c27d9a9a7c3150",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/db/src/register.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 3051,
+      "contentSha256": "5a1bef69f942ca9dc292be21dd48b8b3074b9f1d3ebfe474349211c1994c4970",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/db/src/replay.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 312,
+      "contentSha256": "0236d19dccec85945924b214065d4baab010d8fabcbd93a12f3118fb74c81663",
+      "anchors": {
+        "L245": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/land/src/grant.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 296,
+      "contentSha256": "0ef0d84ccf16a469d2c8bc1e2fbd91dba083bb6a23d98933f84386938f73618f",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/land/tests/oracle.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 1025,
+      "contentSha256": "e2e0a66c7027f3d6de123cdab45f5cbdb6d65d4b8c5e750b01c3dfe252d9ef8a",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/mem/src/handle.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 190,
+      "contentSha256": "0f5116d1c741bd5a5c7dba6b61a6e2d4b42e9cf6c35d8a6b14d1d4f3213423c3",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/engine.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 1335,
+      "contentSha256": "cdbe9ce375f8c30900131d6a7028c22d1378772d800dff21730170382479477d",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/increment.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 1339,
+      "contentSha256": "24d16a25bc6845da28ee20a244896b54cf1127718f95bb93496ab8969f4d1c29",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/map.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 100,
+      "contentSha256": "6cf1fba5a6daf9dfa542ab149ea06a8cdfbaf411602eb7fbc21e0636c5888bc4",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/splice.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 113,
+      "contentSha256": "af5b090fbdfc48582eeae5577f22ed464c308c0550cc79a9e31ed4c11a572db3",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/src/verdict.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 145,
+      "contentSha256": "d8853da9f68bcd0876b2b2f4294e2977b4041d9b550c3a63b2fc3eb523af0848",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/merge/tests/derive.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 327,
+      "contentSha256": "3bc0fab89a1ac269cecc16dbc28b726936e01657d6df9896ac3118a1c8ffd543",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/sdk-python/tests/test_sdk_async.py": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 190,
+      "contentSha256": "2358a3cac2f3f33163d633388a12ba94491f29bd363de2b54346101c833f5b25",
+      "anchors": {
+        "L142-L161": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/server/src/fleet.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 2868,
+      "contentSha256": "6508a549a85a7d2c4a9e75841d147f09747a311cfee0baebc3d181828225fd83",
+      "anchors": {
+        "L2345-L2357": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/server/tests/fleet.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 2459,
+      "contentSha256": "070b1bdfe90025e82252348e60e5228d86a8a04f845b87debcdcbcce0209fbf9",
+      "anchors": {
+        "L1217-L1280": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/transport/src/flow.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 241,
+      "contentSha256": "60463fb7cea9706a91343612af8430a60b2783b143c6764fdf19be3d63209ad0",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/transport/tests/session.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 819,
+      "contentSha256": "fabd57b428781ca94bf4ee3fe1e872b6383805f2445800e0d21d525a4963c1b3",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/vfs/src/algebra.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 512,
+      "contentSha256": "64fb06bddaac7dc38861a95828a2af177201d2320f6590e102d8adff707e0871",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/vfs/src/base.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 1909,
+      "contentSha256": "891ced0c19f96c70ad9940166c94d7bd384e69e32a7b616aacfd08ba5deadfa2",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/vfs/src/content.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 375,
+      "contentSha256": "dcd1c6e591447f23b94544a62cc5bcb19c1533e2c2504add27b8747bde82cfbe",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/crates/vfs/src/volume.rs": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 3202,
+      "contentSha256": "0faad7a7f10e3114819c177326b216fd037699d4a188ad677a77230d74802d8b",
+      "anchors": {
+        "L500-L510": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/cli.md": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 181,
+      "contentSha256": "01d793d018e68a3c0218e8dca3b07d68448af0d98e5213aa9e3078b7e46d4f5f",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/BENCHMARKS.md": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 417,
+      "contentSha256": "ad0be95befe4754a68eec54476bf1a73261f5468a2e460a95afd076612dc9002",
+      "anchors": {
+        "L148-L175": {
+          "kind": "lines"
+        },
+        "L381-L416": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/enrollment.md": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 83,
+      "contentSha256": "12063ba960c3d35c7f98fcb22d3628d5f15cd94d887745fe7171d689e772b3b4",
+      "anchors": {}
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/fleet-transport.md": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 364,
+      "contentSha256": "44793d4d20a4f8ad9446ce15acf78b92bd2991c57323e8b405eeed747290268d",
+      "anchors": {
+        "8-the-session-plane-slice-4--the-owned-quic-dialect-tls-13-not-noise": {
+          "kind": "heading",
+          "heading": "8. The session plane (slice 4) — the owned QUIC dialect, TLS 1.3 not Noise"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/recovery.md": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 270,
+      "contentSha256": "ce3d5d043a7c57aee9ac77fc7a12e00a2fb85adda41d6fd90eb6807f4771564d",
+      "anchors": {
+        "L11-L62": {
+          "kind": "lines"
+        },
+        "2-the-mechanism-and-why": {
+          "kind": "heading",
+          "heading": "2. The mechanism and why"
+        }
+      }
+    },
+    "hyper-light/slates/blob/3aa6b85c155ba4269614b5e5d3c053e28dd3c787/docs/wip/SLATES_DESIGN.md": {
+      "revision": "3aa6b85c155ba4269614b5e5d3c053e28dd3c787",
+      "lineCount": 4540,
+      "contentSha256": "e3767bc4fd442001282a5007ad4284e712ee0fb58eee046fd4ee89ea4c9ad950",
+      "anchors": {
+        "L335-L498": {
+          "kind": "lines"
+        },
+        "L707-L712": {
+          "kind": "lines"
+        },
+        "L1303-L1497": {
+          "kind": "lines"
+        },
+        "L2313-L2347": {
+          "kind": "lines"
+        },
+        "L1175-L1290": {
+          "kind": "lines"
+        },
+        "L596-L605": {
+          "kind": "lines"
+        },
+        "L1429-L1438": {
+          "kind": "lines"
+        },
+        "L805-L903": {
+          "kind": "lines"
+        },
+        "L2628-L2665": {
+          "kind": "lines"
+        },
+        "L904-L962": {
+          "kind": "lines"
+        },
+        "L1579-L1869": {
+          "kind": "lines"
+        },
+        "L1794-L1809": {
+          "kind": "lines"
+        },
+        "L1959-L1972": {
+          "kind": "lines"
+        },
+        "L2171-L2228": {
+          "kind": "lines"
+        },
+        "L1782-L1792": {
+          "kind": "lines"
+        },
+        "L2569-L2571": {
+          "kind": "lines"
+        },
+        "L1940-L1944": {
+          "kind": "lines"
+        },
+        "L1974-L1985": {
+          "kind": "lines"
+        },
+        "L1635-L1656": {
+          "kind": "lines"
+        },
+        "L666-L678": {
+          "kind": "lines"
+        },
+        "L1927-L2039": {
+          "kind": "lines"
+        },
+        "L4529-L4540": {
+          "kind": "lines"
+        },
+        "L2349-L2448": {
+          "kind": "lines"
+        },
+        "43-runtime-thread-per-core-executor-drivers-rings-cancellation-d-7-d-9": {
+          "kind": "heading",
+          "heading": "4.3 Runtime: thread-per-core executor, drivers, rings, cancellation (D-7, D-9)"
+        },
+        "47-ipc-and-the-provisioning-fast-path-d-10": {
+          "kind": "heading",
+          "heading": "4.7 IPC and the provisioning fast path (D-10)"
+        },
+        "L1635-L1710": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ann/src/embed.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 283,
+      "contentSha256": "322a41744bf8d1ebbd7f4a4d2cf59229ed101c0d060853d690eebc07f1d28d15",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ann/src/encoder/mod.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 468,
+      "contentSha256": "bfd15c61c28d7a43ab5806600dbce4f2005b89388e6b00cf591750b653bae9d0",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ann/src/learned/mod.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 44,
+      "contentSha256": "de17a2dcbc64117b48a732768feb44ac33860f0a38de4865864df0753033f30f",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/graph/src/csr.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 202,
+      "contentSha256": "f14393da948f66fde0280e73d3d31ebc087cdccaf7bd023a91e970b2d8496414",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/index/src/lib.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 7551,
+      "contentSha256": "ddc1d4413cf8dfb453bb6b376d81882cc6a5b219bba8b256635811bac67f8e48",
+      "anchors": {
+        "L4328-L4366": {
+          "kind": "lines"
+        },
+        "L4328-L4365": {
+          "kind": "lines"
+        }
+      }
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/ingest/src/pipeline.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 2821,
+      "contentSha256": "4243d4401b7b6265dc8a47136cd95e54acbbe2b42d77ac08b126266cd2bea5ec",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/crates/resolve/src/resolver.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 1751,
+      "contentSha256": "645a9bbef017625d470fc1f7d8b7930e67be25448f70027105b50523e9fb249a",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/getting-started.md": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 150,
+      "contentSha256": "f6cdc423bb63d4e27749acaa00277f3d4bc579ffb090019b586bf4fc85756911",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/INDEX_FORMAT.md": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 91,
+      "contentSha256": "70776f286cf143d9d3e8fe87b5095f16be7a8a3d0d2520f27edff60f0232f89c",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/LANGUAGES.md": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 71,
+      "contentSha256": "019b416f97a0848ad2f47d4b49eebe07beddbcedab800b15ee4042a2d52e53e9",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/docs/mcp.md": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 364,
+      "contentSha256": "9d60993095af26df0b85a8c7c9c9319b7f2364b39fbcac08d85551eb6bfd2966",
+      "anchors": {}
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/README.md": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 708,
+      "contentSha256": "c37f69baa3ee844c79acfb5356e3821f1e432ee9ce2530b2030116a757aabd99",
+      "anchors": {
+        "performance": {
+          "kind": "heading",
+          "heading": "Performance"
+        },
+        "how-fast-is-structural-search": {
+          "kind": "heading",
+          "heading": "How fast is structural search?"
+        },
+        "is-search-any-good": {
+          "kind": "heading",
+          "heading": "Is search any good?"
+        },
+        "how-does-it-compare": {
+          "kind": "heading",
+          "heading": "How does it compare?"
+        }
+      }
+    },
+    "hyper-light/vorpal/blob/4dd203fa560bfd2c0c8f1857f7bbca983c23de63/xtask/src/searcheval.rs": {
+      "revision": "4dd203fa560bfd2c0c8f1857f7bbca983c23de63",
+      "lineCount": 467,
+      "contentSha256": "3b1506cb8a05c7d1845426155c8140702d60f8083d46f18adfd8ce3d1d61df00",
+      "anchors": {}
+    }
+  }
+}

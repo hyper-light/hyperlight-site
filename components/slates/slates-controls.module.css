@@ -1,0 +1,33 @@
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  margin-top: 18px;
+  border-block: 1px solid #28313d;
+  color: #aab3c1;
+  font:
+    12px var(--font-mono),
+    monospace;
+}
+.controls select {
+  min-height: 40px;
+  min-width: 0;
+  max-width: 70%;
+  border: 1px solid #34404d;
+  border-radius: 5px;
+  padding: 8px 12px;
+  color: #ced8e0;
+  background: #0f151d;
+  font: inherit;
+}
+.controls select:focus-visible {
+  outline: 2px solid #aab8d2;
+  outline-offset: 3px;
+}
+@container (max-width: 560px) {
+  .controls {
+    padding: 16px 17px;
+  }
+}

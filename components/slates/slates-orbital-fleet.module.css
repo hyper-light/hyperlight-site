@@ -1,0 +1,38 @@
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+}
+
+.choice {
+  position: relative;
+  min-width: 0;
+}
+
+.controls .choice select {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: 44px;
+  min-height: 44px;
+  padding: 10px 36px 10px 12px;
+  line-height: 20px;
+}
+
+.chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+@container (max-width: 560px) {
+  .controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}
