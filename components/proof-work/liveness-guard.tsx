@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "./proof-figure";
 import { livenessGuardSource, livenessGuardSteps } from "./liveness-guard-data";
-import { livenessGuardFrame } from "./liveness-guard-geometry";
+import { loadLivenessGuardFrame } from "./proof-frame-loaders";
 
 export function LivenessGuard() {
   return (
@@ -11,7 +11,7 @@ export function LivenessGuard() {
       eyebrow="FAILURE DETECTION / BOUNDED GRACE"
       title="Lifeguard and Late-Homework Extensions"
       steps={livenessGuardSteps}
-      frame={livenessGuardFrame}
+      loadFrame={loadLivenessGuardFrame}
       caption={
         <>
           Local health limits hasty accusations; witnessed, capped grace gives a

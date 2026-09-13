@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { namespaceSteps } from "./namespace-data";
-import { namespaceFrame } from "./namespace-geometry";
+import { loadNamespaceFrame } from "./slates-frame-loaders";
 
 export function SlatesNamespace() {
   return (
@@ -10,7 +10,7 @@ export function SlatesNamespace() {
       id="slates-namespace"
       eyebrow="SLATES / NAMESPACE"
       title="Renaming a File While It’s Open"
-      frame={namespaceFrame}
+      loadFrame={loadNamespaceFrame}
       steps={namespaceSteps}
       autoAdvance
       mobileStageRail

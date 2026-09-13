@@ -7,7 +7,7 @@ import {
   landingSteps,
   type LandingExample,
 } from "./landing-data";
-import { landingFrames } from "./landing-geometry";
+import { loadLandingFrames } from "./slates-frame-loaders";
 import styles from "./slates-controls.module.css";
 
 export function SlatesLanding() {
@@ -19,7 +19,7 @@ export function SlatesLanding() {
       eyebrow="SLATES / DISK WRITES"
       title="Approving Disk Changes"
       steps={landingSteps(example)}
-      frame={landingFrames[example]}
+      loadFrame={loadLandingFrames[example]}
       resetKey={example}
       autoAdvance
       mobileStageRail

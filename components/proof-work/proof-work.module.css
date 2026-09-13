@@ -78,6 +78,36 @@
 }
 .stage {
   margin-top: 8px;
+  position: relative;
+  aspect-ratio: var(--proof-landscape-ratio, 800 / 520);
+}
+.stagePlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: #93a1b4;
+  font:
+    12px/1.6 var(--font-mono),
+    monospace;
+  text-align: center;
+}
+.stagePlaceholder button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid #637083;
+  border-radius: 4px;
+  color: #d4dde8;
+  background: #111722;
+  cursor: pointer;
+}
+.stagePlaceholder button:focus-visible {
+  outline: 2px solid #b7c4df;
+  outline-offset: 4px;
 }
 .landscape {
   display: block;
@@ -233,6 +263,9 @@
   }
 }
 @container (max-width: 560px) {
+  .stage {
+    aspect-ratio: var(--proof-portrait-ratio, 420 / 740);
+  }
   .sceneName,
   .sceneLabel,
   .sceneStatus {

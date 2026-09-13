@@ -3,17 +3,13 @@
 import { useLayoutEffect, useId, useMemo, useRef } from "react";
 import { useStudyMotion } from "@/components/studies/use-study-motion";
 import type { ProofFrameFunction } from "./proof-geometry";
+import {
+  createProofPainter,
+  proofPathFill,
+  proofToneColor,
+  type ProofFramePainter,
+} from "./proof-scene-painter";
 import styles from "./proof-work.module.css";
-
-const toneColor = {
-  pass: "#a8c9bc",
-  fail: "#d5a4ad",
-  pending: "#aab8d2",
-  error: "#d8bb95",
-};
-function color(tone: keyof typeof toneColor | "neutral" | undefined) {
-  return tone && tone !== "neutral" ? toneColor[tone] : undefined;
-}
 
 type SceneNodes = {
   frame: ProofFrameFunction;
@@ -21,54 +17,17 @@ type SceneNodes = {
   time: number;
   selection: number;
   transition: { from: number; target: number; elapsed: number };
-  paths: SVGPathElement[];
-  labels: SVGTextElement[];
-  prism: SVGLinearGradientElement;
+  paint: ProofFramePainter;
 };
 
 const cache = new WeakMap<SVGSVGElement, SceneNodes>();
 
-function paint(svg: SVGSVGElement, nodes: SceneNodes, time: number) {
-  const frame = nodes.frame(time, nodes.selection, nodes.portrait);
-  frame.paths.forEach((path, index) => {
-    const element = nodes.paths[index];
-    element.setAttribute("d", path.d);
-    element.setAttribute("opacity", path.opacity.toFixed(3));
-    if (path.fillOpacity !== undefined)
-      element.setAttribute("fill-opacity", path.fillOpacity.toFixed(3));
-    if (path.fillColor !== undefined)
-      element.setAttribute("fill", path.fillColor);
-    if (path.strokeOpacity !== undefined)
-      element.setAttribute("stroke-opacity", path.strokeOpacity.toFixed(3));
-    element.style.stroke =
-      path.material === "shadow" ? "none" : (color(path.tone) ?? "");
-    if (path.kind === "light")
-      element.setAttribute(
-        "stroke-dashoffset",
-        (-time * 22 + index * 7).toFixed(2),
-      );
-  });
-  frame.labels.forEach((label, index) => {
-    const element = nodes.labels[index];
-    element.setAttribute("x", label.x.toFixed(2));
-    element.setAttribute("y", label.y.toFixed(2));
-    element.setAttribute("opacity", (label.opacity ?? 1).toFixed(3));
-    if (label.transform) element.setAttribute("transform", label.transform);
-    else element.removeAttribute("transform");
-    element.style.fill = color(label.tone) ?? "";
-    if (label.surface) element.dataset.proofSurface = label.surface;
-    else delete element.dataset.proofSurface;
-    if (element.textContent !== label.text) element.textContent = label.text;
-  });
-  nodes.prism.setAttribute(
-    "x1",
-    (-100 + Math.sin(time * 0.23) * 130).toFixed(2),
+function paint(nodes: SceneNodes, time: number) {
+  nodes.paint(
+    nodes.frame(time, nodes.selection, nodes.portrait),
+    time,
+    nodes.selection,
   );
-  nodes.prism.setAttribute(
-    "x2",
-    (760 + Math.sin(time * 0.19) * 110).toFixed(2),
-  );
-  svg.dataset.proofSelection = nodes.selection.toFixed(3);
 }
 
 function update(svg: SVGSVGElement, time: number) {
@@ -97,7 +56,7 @@ function update(svg: SVGSVGElement, time: number) {
   }
   if (Math.abs(target - nodes.selection) < 0.001) nodes.selection = target;
   nodes.time = time;
-  paint(svg, nodes, time);
+  paint(nodes, time);
 }
 
 export function ProofScene({
@@ -145,14 +104,15 @@ export function ProofScene({
           elapsed: 0,
         },
         time: nodes?.time ?? 0,
-        paths: Array.from(
-          svg.querySelectorAll<SVGPathElement>("[data-proof-path]"),
-        ),
-        labels: Array.from(
-          svg.querySelectorAll<SVGTextElement>("[data-proof-label]"),
-        ),
-        prism:
+        paint: createProofPainter(
+          svg,
+          Array.from(svg.querySelectorAll<SVGPathElement>("[data-proof-path]")),
+          Array.from(
+            svg.querySelectorAll<SVGTextElement>("[data-proof-label]"),
+          ),
           svg.querySelector<SVGLinearGradientElement>("[data-proof-prism]")!,
+          prefix,
+        ),
       };
       cache.set(svg, nodes);
     }
@@ -160,8 +120,8 @@ export function ProofScene({
       nodes &&
       (rebound ||
         (paused && selectionChanged) ||
-        // Keep the CSS-hidden responsive counterpart current without replaying
-        // an old lifecycle when a resize makes it visible.
+        // Keep an offscreen scene's requested stage current without replaying
+        // an old lifecycle when its containing view becomes visible.
         (selectionChanged && svg.getClientRects().length === 0) ||
         window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     ) {
@@ -176,9 +136,9 @@ export function ProofScene({
         nodes.selection = selection;
         nodes.transition = { from: selection, target: selection, elapsed: 0 };
       }
-      paint(svg, nodes, nodes.time);
+      paint(nodes, nodes.time);
     }
-  }, [frame, portrait, paused, selection]);
+  }, [frame, portrait, paused, selection, prefix]);
   useStudyMotion({ ref, paused, update, fps: 60 });
 
   return (
@@ -261,19 +221,14 @@ export function ProofScene({
           d={path.d}
           // Match paint() precision across server V8 and browser engines.
           opacity={path.opacity.toFixed(3)}
-          fill={
-            path.fillColor ??
-            (path.material
-              ? `url(#${prefix}-${path.material})`
-              : path.kind === "glass" || path.kind === "shade"
-                ? `url(#${prefix}-glass)`
-                : "none")
-          }
+          display={path.opacity === 0 ? "none" : undefined}
+          fill={proofPathFill(path, prefix)}
           fillOpacity={path.fillOpacity}
           strokeOpacity={path.strokeOpacity?.toFixed(3)}
           stroke={`url(#${prefix}-prism)`}
           style={{
-            stroke: path.material === "shadow" ? "none" : color(path.tone),
+            stroke:
+              path.material === "shadow" ? "none" : proofToneColor(path.tone),
           }}
           vectorEffect="non-scaling-stroke"
           pathLength={path.kind === "light" ? 200 : undefined}
@@ -304,7 +259,7 @@ export function ProofScene({
           y={label.y}
           textAnchor={label.anchor ?? "middle"}
           opacity={label.opacity ?? 1}
-          style={{ fill: color(label.tone) }}
+          style={{ fill: proofToneColor(label.tone) }}
         >
           {label.text}
         </text>

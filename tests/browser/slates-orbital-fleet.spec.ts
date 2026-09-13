@@ -43,6 +43,7 @@ async function openFleet(page: Page, reduced = true) {
   await page.evaluate(() => document.fonts.ready);
   const figure = page.locator(figureSelector);
   await expect(figure).toHaveCount(1);
+  await figure.locator("[data-proof-stage]").scrollIntoViewIfNeeded();
   const svg = figure.locator("[data-proof-scene]:visible");
   await expect(svg).toHaveCount(1);
   return { figure, svg };

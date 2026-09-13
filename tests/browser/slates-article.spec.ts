@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -79,6 +80,7 @@ test("all Slates illustrations keep labels clear at every responsive stage", asy
     await page.setViewportSize({ width, height: 1000 });
     for (const id of figures) {
       const figure = page.locator(`[data-proof-figure="${id}"]`);
+      await approachProofScene(figure);
       const svg = figure.locator("[data-proof-scene]:visible");
       await expect(svg).toHaveCount(1);
       const variants =
@@ -227,6 +229,7 @@ test("conflict-resolution display text keeps eight units of native glyph padding
   const figure = page.locator(
     '[data-proof-figure="slates-conflict-resolution"]',
   );
+  await approachProofScene(figure);
   const svg = figure.locator("[data-proof-scene]:visible");
   const surfaces = [
     "agent1-tower-integrated-display",
@@ -350,6 +353,7 @@ test("landing refuses outside edits and stage navigation respects reduced motion
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/blog/introducing-slates");
   const figure = page.locator('[data-proof-figure="slates-landing"]');
+  await approachProofScene(figure);
   const svg = figure.locator("[data-proof-scene]:visible");
   await figure.getByRole("combobox").selectOption("drift");
   await figure.getByRole("tab", { name: "Land", exact: true }).click();

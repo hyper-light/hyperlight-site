@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { workspaceSteps } from "./workspace-data";
-import { workspaceFrame } from "./workspace-geometry";
+import { loadWorkspaceFrame } from "./slates-frame-loaders";
 
 export function SlatesWorkspace() {
   return (
@@ -10,7 +10,7 @@ export function SlatesWorkspace() {
       id="slates-workspace"
       eyebrow="SLATES / WORK VOLUMES"
       title="Sharing Unchanged File Content"
-      frame={workspaceFrame}
+      loadFrame={loadWorkspaceFrame}
       steps={workspaceSteps}
       autoAdvance
       mobileStageRail

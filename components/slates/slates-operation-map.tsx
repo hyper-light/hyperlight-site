@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { operationMapSteps } from "./operation-map-data";
-import { operationMapFrame } from "./operation-map-geometry";
+import { loadOperationMapFrame } from "./slates-frame-loaders";
 
 export function SlatesOperationMap() {
   return (
@@ -10,7 +10,7 @@ export function SlatesOperationMap() {
       id="slates-operation-map"
       eyebrow="SLATES / COORDINATE MAP"
       title="Updating Edit Positions After an Insertion"
-      frame={operationMapFrame}
+      loadFrame={loadOperationMapFrame}
       steps={operationMapSteps}
       autoAdvance
       mobileStageRail

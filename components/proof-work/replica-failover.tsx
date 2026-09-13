@@ -2,7 +2,7 @@
 
 import { ProofFigure, type ProofStep } from "./proof-figure";
 import { replicaStates } from "./replica-failover-data";
-import { replicaFailoverFrame } from "./replica-failover-geometry";
+import { loadReplicaFailoverFrame } from "./proof-frame-loaders";
 
 const steps: ProofStep[] = replicaStates.map((state) => ({
   label: state.label,
@@ -31,7 +31,7 @@ export function ReplicaFailover() {
       id="replica-failover"
       eyebrow="PROOF OF WORK / DURABILITY"
       title="Replica Failover"
-      frame={replicaFailoverFrame}
+      loadFrame={loadReplicaFailoverFrame}
       steps={steps}
       caption={
         <>

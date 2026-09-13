@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test, type Locator } from "@playwright/test";
 
 const outcomes = ["pass", "fail", "error", "missing"];
@@ -32,6 +33,7 @@ test("distant stage jumps settle promptly in both directions", async ({
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const scene = explorer.locator("[data-proof-scene]:visible");
   const tabs = explorer.locator("[data-proof-steps]").getByRole("tab");
   await showScene(scene);
@@ -77,6 +79,7 @@ test("one continuous journey keeps its frame stable across outcomes", async ({
   await page.goto("/blog/agentic-proof-of-work");
   await page.evaluate(() => document.fonts.ready);
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   await expect(explorer.getByRole("tablist")).toHaveCount(1);
   await expect(
     explorer.getByRole("tablist", { name: "Object family" }),
@@ -127,6 +130,7 @@ test("the complete journey and all outcomes have readable labels and a shared sc
   await page.goto("/blog/agentic-proof-of-work");
   await page.evaluate(() => document.fonts.ready);
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const topologies: string[][] = [];
   for (const outcome of outcomes) {
     await explorer.getByLabel("Evaluation outcome").selectOption(outcome);
@@ -229,6 +233,7 @@ test("every adjacent stage animates and pause/replay preserve the journey", asyn
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const scene = explorer.locator("[data-proof-scene]:visible");
   const tabs = explorer.locator("[data-proof-steps]").getByRole("tab");
   const read = () =>
@@ -283,6 +288,7 @@ test("the continuous journey plays automatically while in view", async ({
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const scene = explorer.locator("[data-proof-scene]:visible");
   await expect(
     explorer.getByRole("button", { name: /^Pause .* animation$/ }),
@@ -315,6 +321,7 @@ test("autoplay visibly acknowledges T1 and returns its ledger confirmation", asy
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const scene = explorer.locator("[data-proof-scene]:visible");
   await showScene(scene);
   const ack = scene.locator('[data-proof-path="testament-delivery-ack"]');

@@ -8,7 +8,7 @@ import {
   type ResolutionAuthor,
   type ResolutionRecheck,
 } from "./conflict-resolution-data";
-import { conflictResolutionFrames } from "./conflict-resolution-geometry";
+import { loadConflictResolutionFrames } from "./slates-frame-loaders";
 import styles from "./slates-controls.module.css";
 
 export function SlatesConflictResolution() {
@@ -21,7 +21,7 @@ export function SlatesConflictResolution() {
       id="slates-conflict-resolution"
       eyebrow="SLATES / RESOLVING A CONFLICT"
       title="Resolving Conflicting Agent Edits"
-      frame={conflictResolutionFrames[author][recheck]}
+      loadFrame={loadConflictResolutionFrames[author][recheck]}
       steps={conflictResolutionSteps(author, recheck)}
       reserveSteps={(["agent", "human"] as const).flatMap((a) =>
         (["unchanged", "changed"] as const).flatMap((r) =>

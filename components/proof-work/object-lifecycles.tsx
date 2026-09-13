@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ProofFigure } from "./proof-figure";
 import { journeyLifecycleSteps } from "./journey-lifecycle-data";
-import { journeyLifecycleFrames } from "./journey-lifecycle-geometry";
+import { loadJourneyFrames } from "./proof-frame-loaders";
 import {
   validatorExamples,
   type ValidatorExample,
@@ -53,7 +53,7 @@ export function ObjectLifecycles() {
         }
         steps={journeyLifecycleSteps(example)}
         reserveSteps={reserveSteps}
-        frame={journeyLifecycleFrames[example]}
+        loadFrame={loadJourneyFrames[example]}
         caption="C17 and T1 are distinct authored records. A/hA is the returned change artifact. Participants execute the work and checks; the ledger records their evidence and derives claim satisfaction. Optional progress and artifact-observation transitions are omitted, and this example has no pending graph dependencies."
         autoAdvance
         stepDuration={2.4}

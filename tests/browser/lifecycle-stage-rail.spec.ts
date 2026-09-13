@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test, type Locator } from "@playwright/test";
 
 async function expectSelectionVisible(rail: Locator) {
@@ -20,6 +21,7 @@ test("lifecycle stages remain a single row with complete keyboard navigation", a
   await page.goto("/blog/agentic-proof-of-work");
   await page.evaluate(() => document.fonts.ready);
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const rail = explorer.locator("[data-proof-steps]");
   const dimensions = await rail.evaluate((element) => ({
     width: element.clientWidth,
@@ -94,6 +96,7 @@ test("autoplay reveals the active lifecycle stage without scrolling the article"
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const rail = explorer.locator("[data-proof-steps]");
   const scene = explorer.locator("[data-proof-scene]:visible");
   await scene.scrollIntoViewIfNeeded();

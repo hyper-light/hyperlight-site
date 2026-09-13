@@ -5,10 +5,8 @@ import { ChevronDown } from "lucide-react";
 import { ProofFigure } from "../proof-work/proof-figure";
 import { orbitalFleetSources } from "./orbital-fleet-data";
 import { resolutionSources } from "./conflict-resolution-data";
-import {
-  orbitalFleetFrames,
-  orbitalFleetLayout,
-} from "./orbital-fleet-geometry";
+import { loadOrbitalFleetFrames } from "./slates-frame-loaders";
+import { orbitalSceneHeights } from "./orbital-scene-dimensions";
 import {
   orbitalScenarios,
   orbitalScenarioSteps,
@@ -20,10 +18,6 @@ import orbitalStyles from "./slates-orbital-fleet.module.css";
 const reservedSteps = orbitalScenarios.flatMap(({ value }) =>
   orbitalScenarioSteps(value),
 );
-const sceneHeights = {
-  landscape: orbitalFleetLayout(false).height,
-  portrait: orbitalFleetLayout(true).height,
-};
 
 export function SlatesOrbitalFleet() {
   const [scenario, setScenario] = useState<OrbitalScenario>("success");
@@ -34,13 +28,13 @@ export function SlatesOrbitalFleet() {
       eyebrow="SLATES / A DISTRIBUTED WORKSPACE"
       title="Private Work. Shared Progress."
       description="Follow a successful run—or see what happens when edits conflict, content is missing, or a node stops responding."
-      frame={orbitalFleetFrames[scenario]}
+      loadFrame={loadOrbitalFleetFrames[scenario]}
       steps={orbitalScenarioSteps(scenario)}
       reserveSteps={reservedSteps}
       resetKey={scenario}
       autoAdvance
       mobileStageRail
-      sceneHeights={sceneHeights}
+      sceneHeights={orbitalSceneHeights}
       stepDuration={3.2}
       seekDuration={1.2}
       controls={

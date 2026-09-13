@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "./proof-figure";
 import { ledgerShardsSource, ledgerShardsSteps } from "./ledger-shards-data";
-import { ledgerShardsFrame } from "./ledger-shards-geometry";
+import { loadLedgerShardsFrame } from "./proof-frame-loaders";
 
 export function LedgerShards() {
   return (
@@ -11,7 +11,7 @@ export function LedgerShards() {
       eyebrow="PROOF OF WORK / RANGE MOVEMENT"
       title="Range Sharding and Movement"
       steps={ledgerShardsSteps}
-      frame={ledgerShardsFrame}
+      loadFrame={loadLedgerShardsFrame}
       autoAdvance
       caption={
         <>

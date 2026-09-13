@@ -2,7 +2,7 @@
 
 import { ProofFigure, type ProofStep } from "./proof-figure";
 import { latencyExamples, latencyMeasurements } from "./latency-probing-data";
-import { latencyProbingFrame } from "./latency-probing-geometry";
+import { loadLatencyProbingFrame } from "./proof-frame-loaders";
 
 const steps: ProofStep[] = latencyExamples.map((example, index) => {
   const measurement = latencyMeasurements[index];
@@ -30,7 +30,7 @@ export function LatencyProbing() {
       id="latency-probing"
       eyebrow="PROOF OF WORK / LIVENESS"
       title="Latency-Aware Probing"
-      frame={latencyProbingFrame}
+      loadFrame={loadLatencyProbingFrame}
       steps={steps}
       caption={
         <>

@@ -2,7 +2,7 @@
 
 import { ProofFigure, type ProofStep } from "./proof-figure";
 import { fixtureExamples, fixtureOutcome } from "./validation-fixture-data";
-import { validationFixtureFrame } from "./validation-fixture-geometry";
+import { loadValidationFixtureFrame } from "./proof-frame-loaders";
 
 const steps: ProofStep[] = fixtureExamples.map((example) => {
   const outcome = fixtureOutcome(example);
@@ -48,7 +48,7 @@ export function ValidationFixture() {
       id="validation-fixture"
       eyebrow="PROOF OF WORK / VALIDATION"
       title="Artifact-Bound Validation"
-      frame={validationFixtureFrame}
+      loadFrame={loadValidationFixtureFrame}
       steps={steps}
       caption={
         <>

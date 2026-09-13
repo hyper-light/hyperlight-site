@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -24,6 +25,7 @@ test("record labels never overlap at any settled lifecycle state", async ({
     await page.setViewportSize({ width, height: 1000 });
     for (const id of ids) {
       const figure = page.locator(`[data-proof-figure="${id}"]`);
+      await approachProofScene(figure);
       for (const [step, tab] of (
         await figure.getByRole("tab").all()
       ).entries()) {
@@ -75,6 +77,7 @@ test("record text has padding inside its projected glass surface", async ({
   const failures: string[] = [];
   for (const id of ids) {
     const figure = page.locator(`[data-proof-figure="${id}"]`);
+    await approachProofScene(figure);
     for (const [step, tab] of (await figure.getByRole("tab").all()).entries()) {
       await tab.click();
       const violations = await scene(figure).evaluate((svg) =>
@@ -228,6 +231,7 @@ test("all nine assemblies fit, use stable tab heights, and remain legible at nar
     await page.setViewportSize({ width, height: 1000 });
     for (const id of ids) {
       const figure = page.locator(`[data-proof-figure="${id}"]`);
+      await approachProofScene(figure);
       const svg = scene(figure);
       await svg.scrollIntoViewIfNeeded();
       await expect(svg).toHaveCount(1);
@@ -336,6 +340,7 @@ test("the visible outcomes distinguish mismatched evidence, failure, absence, an
     });
   }
   const order = page.locator('[data-proof-figure="work-order"]');
+  await approachProofScene(order);
   for (const tab of await order.getByRole("tab").all()) {
     await tab.click();
     await expect(order.getByRole("tabpanel")).toContainText("Not evaluated");
@@ -344,6 +349,7 @@ test("the visible outcomes distinguish mismatched evidence, failure, absence, an
     ).toHaveText("C17");
   }
   const history = page.locator('[data-proof-figure="record-reader"]');
+  await approachProofScene(history);
   for (const tab of await history.getByRole("tab").all()) {
     await tab.click();
     await expect(history.getByRole("tabpanel").locator("dd")).toHaveText([
@@ -363,6 +369,7 @@ test("keyboard controls and reduced-motion figures expose complete accessible ex
   const errors = await openPost(page);
   for (const id of ids) {
     const figure = page.locator(`[data-proof-figure="${id}"]`);
+    await approachProofScene(figure);
     const tabs = figure.getByRole("tab");
     await tabs.first().focus();
     await page.keyboard.press("ArrowRight");
@@ -392,6 +399,7 @@ test("actor names and claim status share one restrained typographic scale", asyn
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openPost(page);
   const figure = page.locator('[data-proof-figure="work-order"]');
+  await approachProofScene(figure);
   const typography = await scene(figure).evaluate((svg) =>
     [
       "maintainer-name",
@@ -416,6 +424,7 @@ test("lifecycle playback stops at the receipt and replay visibly rebuilds the le
   test.setTimeout(60000);
   const errors = await openPost(page);
   const order = page.locator('[data-proof-figure="work-order"]');
+  await approachProofScene(order);
   await scene(order).scrollIntoViewIfNeeded();
   await expect(
     order.getByRole("tab", { name: "Post", exact: true }),
@@ -428,6 +437,7 @@ test("lifecycle playback stops at the receipt and replay visibly rebuilds the le
     order.getByRole("tab", { name: "Accept", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   const history = page.locator('[data-proof-figure="record-reader"]');
+  await approachProofScene(history);
   await history.getByRole("tab", { name: "Replay", exact: true }).click();
   const svg = scene(history);
   await svg.scrollIntoViewIfNeeded();
@@ -456,6 +466,7 @@ test("motion changes real geometry and respects pause, offscreen state, and live
   const errors = await openPost(page);
   for (const id of ids) {
     const figure = page.locator(`[data-proof-figure="${id}"]`);
+    await approachProofScene(figure);
     const svg = scene(figure);
     await svg.scrollIntoViewIfNeeded();
     const geometry = () =>
@@ -491,6 +502,7 @@ test("motion changes real geometry and respects pause, offscreen state, and live
     await still(svg);
   }
   const figure = page.locator('[data-proof-figure="validation-fixture"]');
+  await approachProofScene(figure);
   await scene(figure).scrollIntoViewIfNeeded();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(

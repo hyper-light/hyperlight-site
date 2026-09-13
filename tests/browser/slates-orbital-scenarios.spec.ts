@@ -108,6 +108,7 @@ async function openScenarios(page: Page, reduced = true) {
   expect(response?.status()).toBe(200);
   await page.evaluate(() => document.fonts.ready);
   const figure = page.locator(figureSelector);
+  await figure.locator("[data-proof-stage]").scrollIntoViewIfNeeded();
   const svg = figure.locator("[data-proof-scene]:visible");
   const choice = figure.getByRole("combobox", {
     name: "Scenario",

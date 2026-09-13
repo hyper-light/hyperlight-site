@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test, type Locator } from "@playwright/test";
 
 async function expectDiagramLettering(labels: Locator) {
@@ -31,6 +32,7 @@ test("all proof scenes use instrument lettering without changing article typogra
   const figures = page.locator("[data-proof-figure]");
   await expect(figures).toHaveCount(10);
   for (const figure of await figures.all()) {
+    await approachProofScene(figure);
     await expectDiagramLettering(
       figure.locator("[data-proof-scene]:visible text"),
     );
@@ -103,6 +105,7 @@ test("ranking uses proportional shaded lettering and physical score tracks witho
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/blog/introducing-vorpal");
   const figure = page.locator("[data-vorpal-ranking]");
+  await approachProofScene(figure);
   const svg = figure.locator("[data-ranking-scene]:visible");
   await svg.scrollIntoViewIfNeeded();
   await page.evaluate(() => document.fonts.ready);
@@ -209,6 +212,7 @@ test("record lettering is attached to the glass plane rather than a camera-facin
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/blog/agentic-proof-of-work");
   const figure = page.locator('[data-proof-figure="work-order"]');
+  await approachProofScene(figure);
   const labels = figure.locator(
     "[data-proof-scene]:visible [data-proof-surface]",
   );
@@ -250,6 +254,7 @@ test("claim state changes visibly transfer, write and acknowledge in order", asy
   await page.goto("/blog/agentic-proof-of-work");
   await page.evaluate(() => document.fonts.ready);
   const figure = page.locator('[data-proof-figure="work-order"]');
+  await approachProofScene(figure);
   const svg = figure.locator("[data-proof-scene]:visible");
   await svg.scrollIntoViewIfNeeded();
   await page.clock.pauseAt(new Date(Date.now() + 100));
@@ -311,6 +316,7 @@ test("responsive claim layout preserves the selected state without replaying hid
   await page.clock.install();
   await page.goto("/blog/agentic-proof-of-work");
   const figure = page.locator('[data-proof-figure="work-order"]');
+  await approachProofScene(figure);
   await figure.locator("[data-proof-scene]:visible").scrollIntoViewIfNeeded();
   await page.clock.pauseAt(new Date(Date.now() + 100));
   await figure.getByRole("tab", { name: "Accept", exact: true }).click();

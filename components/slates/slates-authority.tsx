@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { authoritySteps } from "./authority-data";
-import { authorityFrame } from "./authority-geometry";
+import { loadAuthorityFrame } from "./slates-frame-loaders";
 
 export function SlatesAuthority() {
   return (
@@ -11,7 +11,7 @@ export function SlatesAuthority() {
       eyebrow="SLATES / FAILOVER"
       title="Replacing a Failed Owner"
       steps={authoritySteps}
-      frame={authorityFrame}
+      loadFrame={loadAuthorityFrame}
       autoAdvance
       mobileStageRail
       stepDuration={3.1}

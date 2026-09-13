@@ -1,7 +1,7 @@
 "use client";
 
 import { ProofFigure } from "./proof-figure";
-import { ledgerPlacementFrame } from "./ledger-placement-geometry";
+import { loadLedgerPlacementFrame } from "./proof-frame-loaders";
 
 const steps = [
   {
@@ -43,7 +43,7 @@ export function LedgerPlacement() {
       eyebrow="PROOF OF WORK / DISTRIBUTION"
       title="Global Ledger Placement"
       steps={steps}
-      frame={ledgerPlacementFrame}
+      loadFrame={loadLedgerPlacementFrame}
       caption={
         <>
           Map detail from{" "}

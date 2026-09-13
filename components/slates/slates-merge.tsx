@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { ProofFigure } from "../proof-work/proof-figure";
 import { mergeScenarios, mergeSteps, type MergeScenario } from "./merge-data";
-import { mergeFrames } from "./merge-geometry";
+import { loadMergeFrames } from "./slates-frame-loaders";
 import styles from "./merge-controls.module.css";
 
 export function SlatesMerge() {
@@ -14,7 +14,7 @@ export function SlatesMerge() {
       id="slates-merge"
       eyebrow="SLATES / RANGE VERDICT"
       title="Merging Two Sets of File Changes"
-      frame={mergeFrames[scenario]}
+      loadFrame={loadMergeFrames[scenario]}
       steps={mergeSteps(scenario)}
       reserveSteps={mergeScenarios.flatMap(({ id }) => mergeSteps(id))}
       resetKey={scenario}

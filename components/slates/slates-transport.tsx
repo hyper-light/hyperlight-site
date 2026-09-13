@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { transportSteps } from "./transport-data";
-import { transportFrame } from "./transport-geometry";
+import { loadTransportFrame } from "./slates-frame-loaders";
 
 export function SlatesTransport() {
   return (
@@ -11,7 +11,7 @@ export function SlatesTransport() {
       eyebrow="SLATES / TRANSPORT"
       title="Retrying After a Connection Fails"
       steps={transportSteps}
-      frame={transportFrame}
+      loadFrame={loadTransportFrame}
       autoAdvance
       stepDuration={4}
       seekDuration={0.9}

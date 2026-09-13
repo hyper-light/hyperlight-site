@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "./proof-figure";
 import { cassetteArtifacts, cassetteStates } from "./evidence-cassette-data";
-import { evidenceCassetteFrame } from "./evidence-cassette-geometry";
+import { loadEvidenceCassetteFrame } from "./proof-frame-loaders";
 
 export function EvidenceCassette() {
   return (
@@ -10,7 +10,7 @@ export function EvidenceCassette() {
       id="evidence-cassette"
       eyebrow="PROOF OF WORK / EVIDENCE"
       title="Testament Lifecycle"
-      frame={evidenceCassetteFrame}
+      loadFrame={loadEvidenceCassetteFrame}
       autoAdvance
       steps={cassetteStates.map((state) => ({
         ...state,

@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { WORLD_GEOGRAPHY_METADATA } from "../../components/proof-work/world-geography";
 
@@ -109,6 +110,7 @@ test("detailed geography and network traffic stay legible through a full rotatio
   await page.goto("/blog/agentic-proof-of-work");
   await page.evaluate(() => document.fonts.ready);
   const figure = page.locator('[data-proof-figure="ledger-placement"]');
+  await approachProofScene(figure);
   const scene = figure.locator("[data-proof-scene]:visible");
   await scene.scrollIntoViewIfNeeded();
   await page.clock.pauseAt(
@@ -205,6 +207,7 @@ test("Global Ledger Placement gently spins its geography without moving labels o
   expect(response?.status()).toBe(200);
   await page.evaluate(() => document.fonts.ready);
   const figure = page.locator('[data-proof-figure="ledger-placement"]');
+  await approachProofScene(figure);
   const scene = figure.locator("[data-proof-scene]:visible");
   await expect(scene).toHaveCount(1);
   await scene.scrollIntoViewIfNeeded();

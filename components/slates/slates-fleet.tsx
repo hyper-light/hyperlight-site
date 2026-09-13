@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { fleetSteps, fleetSource } from "./fleet-data";
-import { fleetPlacementFrame } from "./fleet-geometry";
+import { loadFleetPlacementFrame } from "./slates-frame-loaders";
 
 export function SlatesFleet() {
   return (
@@ -11,7 +11,7 @@ export function SlatesFleet() {
       eyebrow="SLATES / CROSS-REGION PLACEMENT"
       title="Replicating Content Across Regions"
       steps={fleetSteps}
-      frame={fleetPlacementFrame}
+      loadFrame={loadFleetPlacementFrame}
       autoAdvance
       mobileStageRail
       stepDuration={2.5}

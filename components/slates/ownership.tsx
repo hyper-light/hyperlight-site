@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { ownershipSteps } from "./ownership-data";
-import { ownershipFrame } from "./ownership-geometry";
+import { loadOwnershipFrame } from "./slates-frame-loaders";
 
 export function SlatesOwnership() {
   return (
@@ -11,7 +11,7 @@ export function SlatesOwnership() {
       eyebrow="SLATES / OWNERSHIP"
       title="Processing Writes on Separate Cores"
       steps={ownershipSteps}
-      frame={ownershipFrame}
+      loadFrame={loadOwnershipFrame}
       autoAdvance
       stepDuration={3}
       seekDuration={0.9}

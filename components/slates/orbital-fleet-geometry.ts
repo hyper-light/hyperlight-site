@@ -4,6 +4,7 @@ import type {
 } from "../proof-work/proof-geometry";
 import { easeLifecycle } from "../proof-work/lifecycle-drawing";
 import { orbitalFleetState } from "./orbital-fleet-data";
+import { orbitalSceneHeights } from "./orbital-scene-dimensions";
 import {
   orbitalHomeActivity,
   orbitalWorkerActivity,
@@ -28,7 +29,9 @@ const visibility = (p: number) => clamp(Math.min(p * 12, (1 - p) * 12));
  * their shared world-space depth. Labels have independent readable gutters. */
 export function orbitalFleetLayout(portrait: boolean) {
   const width = portrait ? 420 : 800,
-    height = portrait ? 800 : 720,
+    height = portrait
+      ? orbitalSceneHeights.portrait
+      : orbitalSceneHeights.landscape,
     focal = 650;
   const center: Point2 = portrait ? [210, 580] : [400, 320];
   const depthScale = (z: number) => focal / (focal + z);

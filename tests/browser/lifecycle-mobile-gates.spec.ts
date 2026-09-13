@@ -1,3 +1,4 @@
+import { approachProofScene } from "./proof-scene-helper";
 import { expect, test } from "@playwright/test";
 
 test("mobile autoplay clears return gates and opens claim gates before crossing", async ({
@@ -11,6 +12,7 @@ test("mobile autoplay clears return gates and opens claim gates before crossing"
     new Date(await page.evaluate(() => Date.now() + 1000)),
   );
   const explorer = page.locator("[data-lifecycle-explorer]");
+  await approachProofScene(explorer);
   const scene = explorer.locator('[data-proof-scene][data-portrait="true"]');
   const show = async () => {
     await scene.scrollIntoViewIfNeeded();

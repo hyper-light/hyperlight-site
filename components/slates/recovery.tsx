@@ -2,7 +2,7 @@
 
 import { ProofFigure } from "../proof-work/proof-figure";
 import { recoverySteps } from "./recovery-data";
-import { recoveryFrame } from "./recovery-geometry";
+import { loadRecoveryFrame } from "./slates-frame-loaders";
 
 export function SlatesRecovery() {
   return (
@@ -11,7 +11,7 @@ export function SlatesRecovery() {
       eyebrow="SLATES / RECOVERY"
       title="Recovering After a Daemon Restart"
       steps={recoverySteps}
-      frame={recoveryFrame}
+      loadFrame={loadRecoveryFrame}
       autoAdvance
       stepDuration={3.5}
       seekDuration={0.9}

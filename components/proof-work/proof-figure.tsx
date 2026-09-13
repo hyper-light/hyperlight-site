@@ -11,8 +11,7 @@ import {
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useMotionPreference } from "@/components/motion-provider";
 import { AnimationMotionControls } from "@/components/animation-motion-controls";
-import { ProofScene } from "./proof-scene";
-import type { ProofFrameFunction } from "./proof-geometry";
+import { ProofStage, type ProofFrameSource } from "./proof-stage";
 import tabs from "@/components/article-tabs.module.css";
 import styles from "./proof-work.module.css";
 
@@ -37,6 +36,7 @@ export function ProofFigure({
   description,
   steps,
   frame,
+  loadFrame,
   caption,
   autoAdvance = false,
   stepDuration = 0,
@@ -52,7 +52,6 @@ export function ProofFigure({
   title: string;
   description?: string;
   steps: ProofStep[];
-  frame: ProofFrameFunction;
   caption: ReactNode;
   autoAdvance?: boolean;
   /** Seconds per meaningful lifecycle step; zero keeps the short selection morph. */
@@ -67,10 +66,11 @@ export function ProofFigure({
   reserveSteps?: ProofStep[];
   resetKey?: string;
   sceneHeights?: { landscape: number; portrait: number };
-}) {
+} & ProofFrameSource) {
   const [selected, setSelected] = useState(0);
   const [sequence, setSequence] = useState(autoAdvance);
   const [replay, setReplay] = useState(0);
+  const [sceneReady, setSceneReady] = useState(false);
   const [previousKey, setPreviousKey] = useState(resetKey);
   // Keep the frame and selector DOM mounted when changing scenarios.
   // Reset before committing so an old selected index never reaches a new scene.
@@ -116,7 +116,14 @@ export function ProofFigure({
   }, [mobileStageRail, selected, resetKey, reduced]);
   useEffect(() => {
     const element = stage.current;
-    if (!element || !sequence || paused || selected >= steps.length - 1) return;
+    if (
+      !element ||
+      !sceneReady ||
+      !sequence ||
+      paused ||
+      selected >= steps.length - 1
+    )
+      return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let visible = false;
     const synchronize = () => {
@@ -149,6 +156,7 @@ export function ProofFigure({
     replay,
     resetKey,
     activeStepDuration,
+    sceneReady,
   ]);
   const select = (index: number) => {
     setSequence(false);
@@ -231,28 +239,17 @@ export function ProofFigure({
         </AnimationMotionControls>
       </header>
       {controls}
-      <div className={styles.stage} ref={stage}>
-        <ProofScene
-          key={`landscape-${resetKey}-${replay}`}
-          frame={frame}
-          selection={selected}
-          portrait={false}
-          height={sceneHeights?.landscape}
-          paused={paused}
-          stepDuration={activeStepDuration}
-          transitionLimit={sequence ? undefined : seekDuration}
-        />
-        <ProofScene
-          key={`portrait-${resetKey}-${replay}`}
-          frame={frame}
-          selection={selected}
-          portrait
-          height={sceneHeights?.portrait}
-          paused={paused}
-          stepDuration={activeStepDuration}
-          transitionLimit={sequence ? undefined : seekDuration}
-        />
-      </div>
+      <ProofStage
+        {...(frame ? { frame } : { loadFrame })}
+        stageRef={stage}
+        sceneKey={`${resetKey}-${replay}`}
+        selection={selected}
+        heights={sceneHeights}
+        paused={paused}
+        stepDuration={activeStepDuration}
+        transitionLimit={sequence ? undefined : seekDuration}
+        onReady={setSceneReady}
+      />
       <div
         className={tabs.tabs}
         ref={navigation}
