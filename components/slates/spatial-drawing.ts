@@ -37,7 +37,59 @@ export function spatialCamera(
   ];
 }
 
-export function spatialDrawing(): ProofFrame & {
+function spatialPathData(points: readonly Point2[], closed: boolean) {
+  return (
+    points
+      .map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(3)} ${y.toFixed(3)}`)
+      .join(" ") + (closed ? " Z" : "")
+  );
+}
+
+/** One exact last-value snapshot per path ID, never one entry per clock tick.
+ * Styles are deliberately excluded: only coordinate serialization is reused. */
+export function createSpatialPathCache(capacity = 4096) {
+  const entries = new Map<
+    string,
+    { coordinates: number[]; closed: boolean; data: string }
+  >();
+  return (id: string, points: readonly Point2[], closed: boolean): string => {
+    const previous = entries.get(id);
+    let unchanged =
+      previous !== undefined &&
+      previous.closed === closed &&
+      previous.coordinates.length === points.length * 2;
+    if (unchanged && previous) {
+      for (let i = 0; i < points.length; i++) {
+        if (
+          !Object.is(previous.coordinates[i * 2], points[i][0]) ||
+          !Object.is(previous.coordinates[i * 2 + 1], points[i][1])
+        ) {
+          unchanged = false;
+          break;
+        }
+      }
+      if (unchanged) return previous.data;
+    }
+    const data = spatialPathData(points, closed);
+    if (previous || entries.size < capacity) {
+      const coordinates = previous?.coordinates ?? [];
+      coordinates.length = points.length * 2;
+      for (let i = 0; i < points.length; i++) {
+        coordinates[i * 2] = points[i][0];
+        coordinates[i * 2 + 1] = points[i][1];
+      }
+      if (previous) {
+        previous.closed = closed;
+        previous.data = data;
+      } else entries.set(id, { coordinates, closed, data });
+    }
+    return data;
+  };
+}
+
+export function spatialDrawing(
+  pathCache?: ReturnType<typeof createSpatialPathCache>,
+): ProofFrame & {
   line: (
     id: string,
     points: readonly Point2[],
@@ -84,10 +136,9 @@ export function spatialDrawing(): ProofFrame & {
   ) => {
     paths.push({
       id,
-      d:
-        points
-          .map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(3)} ${y.toFixed(3)}`)
-          .join(" ") + (closed ? " Z" : ""),
+      d: pathCache
+        ? pathCache(id, points, closed)
+        : spatialPathData(points, closed),
       kind: "fine",
       opacity: 0.65,
       ...style,

@@ -34,7 +34,9 @@ function update(svg: SVGSVGElement, time: number) {
   const nodes = cache.get(svg);
   if (!nodes) return;
   const target = Number(svg.dataset.proofTarget);
-  const delta = Math.min(0.1, Math.max(0, time - nodes.time));
+  // The study clock already excludes paused/hidden time. Capping an active
+  // interval here makes slow devices fall behind the lifecycle controls.
+  const delta = Math.max(0, time - nodes.time);
   const secondsPerStep = Number(svg.dataset.proofStepDuration);
   if (secondsPerStep > 0) {
     if (target !== nodes.transition.target) {

@@ -22,6 +22,12 @@ const tint: Record<ProofTone, readonly number[]> = {
   error: [229, 199, 149],
   fail: [224, 158, 174],
 };
+const surfaceBase = {
+  armor: [79, 95, 110],
+  dark: [29, 37, 51],
+  glass: [48, 82, 105],
+  hull: [61, 78, 98],
+};
 
 export function orbitalSurfaceLighting(
   points: readonly Point3[],
@@ -31,34 +37,26 @@ export function orbitalSurfaceLighting(
   const a = points[0],
     b = points[1],
     c = points[2];
-  const u = b.map((value, i) => value - a[i]);
-  const v = c.map((value, i) => value - a[i]);
-  const n = [
-    u[1] * v[2] - u[2] * v[1],
-    u[2] * v[0] - u[0] * v[2],
-    u[0] * v[1] - u[1] * v[0],
-  ];
-  const length = Math.hypot(...n) || 1;
-  const light = Math.max(
-    0,
-    (-0.45 * n[0] - 0.55 * n[1] + n[2]) / (length * 1.227),
-  );
-  const base =
-    surface === "armor"
-      ? [79, 95, 110]
-      : surface === "dark"
-        ? [29, 37, 51]
-        : surface === "glass"
-          ? [48, 82, 105]
-          : surface === "light"
-            ? tint[accent]
-            : [61, 78, 98];
+  // Preserve the original operation order without allocating vectors for
+  // every face of every frame. The normal, lighting and RGB values are exact.
+  const ux = b[0] - a[0],
+    uy = b[1] - a[1],
+    uz = b[2] - a[2];
+  const vx = c[0] - a[0],
+    vy = c[1] - a[1],
+    vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy,
+    ny = uz * vx - ux * vz,
+    nz = ux * vy - uy * vx;
+  const length = Math.hypot(nx, ny, nz) || 1;
+  const light = Math.max(0, (-0.45 * nx - 0.55 * ny + nz) / (length * 1.227));
+  const base = surface === "light" ? tint[accent] : surfaceBase[surface];
   // Quiet, dark planes keep occlusion and directional depth, while the
   // prismatic wire edges carry the same visual weight as the other studies.
   // Bright flat armor would turn the diagram into a solid-shaded model.
   const power = surface === "light" ? 1 : 0.2 + light * 0.55;
   return {
-    fillColor: `rgb(${base.map((value) => Math.round(value * power)).join(" ")})`,
+    fillColor: `rgb(${Math.round(base[0] * power)} ${Math.round(base[1] * power)} ${Math.round(base[2] * power)})`,
     strokeOpacity:
       surface === "light"
         ? 0.55

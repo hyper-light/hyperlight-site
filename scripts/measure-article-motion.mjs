@@ -37,7 +37,13 @@ if (
   throw new Error(
     "CPU must be >=1; samples a positive integer; duration >=500ms; max-p95 >=0",
   );
-const thresholds = { activeP95GapMs: maxP95 || null };
+// rAF timestamp subtraction can represent 33.4 as 33.4000000000007.
+// One nanosecond only absorbs arithmetic noise; raw samples remain unchanged.
+const arithmeticEpsilonMs = 1e-6;
+const thresholds = {
+  activeP95GapMs: maxP95 || null,
+  arithmeticEpsilonMs,
+};
 const browser = await chromium.launch(
   channel === "chromium" ? {} : { channel },
 );
@@ -135,6 +141,7 @@ try {
       requests.set(requestId, {
         type,
         path: target.pathname,
+        protocol: response.protocol,
         status: response.status,
         encodedBytes: 0,
       });
@@ -208,6 +215,7 @@ try {
       },
       navigation: performance.getEntriesByType("navigation").map((entry) => ({
         duration: entry.duration,
+        protocol: entry.nextHopProtocol,
         transferSize: entry.transferSize,
         encodedBodySize: entry.encodedBodySize,
         decodedBodySize: entry.decodedBodySize,
@@ -217,6 +225,10 @@ try {
       resources: performance.getEntriesByType("resource").map((entry) => ({
         type: entry.initiatorType,
         path: new URL(entry.name).pathname,
+        startMs: entry.startTime,
+        responseStartMs: entry.responseStart,
+        responseEndMs: entry.responseEnd,
+        protocol: entry.nextHopProtocol,
         duration: entry.duration,
         transferSize: entry.transferSize,
         encodedBodySize: entry.encodedBodySize,
@@ -292,7 +304,9 @@ report.red =
   (maxP95 > 0 &&
     report.runs.some((run) =>
       run.measurements.some(
-        (item) => item.state === "active" && item.gapP95Ms > maxP95,
+        (item) =>
+          item.state === "active" &&
+          item.gapP95Ms > maxP95 + arithmeticEpsilonMs,
       ),
     ));
 await writeFile(output, JSON.stringify(report, null, 2));

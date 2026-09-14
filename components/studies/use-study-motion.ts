@@ -29,12 +29,15 @@ export function useStudyMotion({
     const interval = 1000 / fps;
     let visible = false;
     let request = 0;
-    let previous = 0;
+    let previous: number | null = null;
     let lastPaint = 0;
 
     const animate = (now: number) => {
       request = window.requestAnimationFrame(animate);
-      if (previous) elapsed.current += Math.min(now - previous, 100) / 1000;
+      // Sample the full active interval even when a slow frame misses its budget.
+      // synchronize() resets the timestamp across intentional inactive periods.
+      if (previous !== null)
+        elapsed.current += Math.max(0, now - previous) / 1000;
       previous = now;
       if (now - lastPaint < interval) return;
       lastPaint = now - ((now - lastPaint) % interval);
@@ -43,7 +46,7 @@ export function useStudyMotion({
 
     const synchronize = () => {
       window.cancelAnimationFrame(request);
-      previous = 0;
+      previous = null;
       lastPaint = 0;
       if (!paused && !reducedMotion.matches && !document.hidden && visible) {
         request = window.requestAnimationFrame(animate);

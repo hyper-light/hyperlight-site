@@ -15,7 +15,12 @@ import {
 } from "./orbital-fleet-scenarios";
 import { drawOrbitalStation } from "./orbital-station-drawing";
 import { drawOrbitalStarfighter } from "./orbital-starfighter-drawing";
-import { spatialDrawing, type Point2, type Point3 } from "./spatial-drawing";
+import {
+  createSpatialPathCache,
+  spatialDrawing,
+  type Point2,
+  type Point3,
+} from "./spatial-drawing";
 
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const mix = (a: Point3, b: Point3, t: number): Point3 => [
@@ -60,7 +65,7 @@ export function orbitalFleetLayout(portrait: boolean) {
       ];
   const homeWorld: Point3 = portrait
     ? atDepth([80, 104], 1320)
-    : [-670, -360, 1000];
+    : [-670, -420, 1000];
   const mirrorWorld: Point3 = portrait
     ? atDepth([335, 127], 1750)
     : [935, -523, 1250];
@@ -96,9 +101,9 @@ export function orbitalFleetLayout(portrait: boolean) {
     ),
   );
   const docks = dockWorlds.map(project);
+  const workerCaptionInsets = portrait ? [25, 12, 8] : [32, 0, 0];
   const workerTitles = workers.map(
-      ([, y], i) =>
-        y - workerScales[i] * 90 - 41 + (portrait ? [25, 12, 8][i] : 0),
+      ([, y], i) => y - workerScales[i] * 90 - 41 + workerCaptionInsets[i],
     ),
     workerReadouts = workerTitles.map((y) => y + 28),
     workerLabelXs = workers.map(([x]) => x);
@@ -176,9 +181,10 @@ function renderOrbitalFleet(
   selection: number,
   portrait: boolean,
   scenario: OrbitalScenario,
+  pathCache?: ReturnType<typeof createSpatialPathCache>,
 ) {
   const story = orbitalScenarioState(scenario, selection);
-  const d = spatialDrawing(),
+  const d = spatialDrawing(pathCache),
     state = orbitalFleetState(story ? 7 : selection),
     layout = orbitalFleetLayout(portrait);
   const elapsed = Number.isFinite(time) ? Math.max(0, time) : 0;
@@ -987,19 +993,34 @@ function renderOrbitalFleet(
   return { paths: d.paths, labels: d.labels };
 }
 
-export const orbitalFleetFrames: Record<OrbitalScenario, ProofFrameFunction> = {
-  success: (time, selection, portrait) =>
-    renderOrbitalFleet(time, selection, portrait, "success"),
-  conflict: (time, selection, portrait) =>
-    renderOrbitalFleet(time, selection, portrait, "conflict"),
-  missing: (time, selection, portrait) =>
-    renderOrbitalFleet(time, selection, portrait, "missing"),
-  unavailable: (time, selection, portrait) =>
-    renderOrbitalFleet(time, selection, portrait, "unavailable"),
-  "reply-loss": (time, selection, portrait) =>
-    renderOrbitalFleet(time, selection, portrait, "reply-loss"),
-  "owner-loss": (time, selection, portrait) =>
-    renderOrbitalFleet(time, selection, portrait, "owner-loss"),
-};
+/** Isolated last-value caches also allow exact uncached parity checks. */
+export function createOrbitalFleetFrames({ cachePaths = true } = {}): Record<
+  OrbitalScenario,
+  ProofFrameFunction
+> {
+  const caches = cachePaths
+    ? [createSpatialPathCache(), createSpatialPathCache()]
+    : undefined;
+  const frame =
+    (scenario: OrbitalScenario): ProofFrameFunction =>
+    (time, selection, portrait) =>
+      renderOrbitalFleet(
+        time,
+        selection,
+        portrait,
+        scenario,
+        caches?.[Number(portrait)],
+      );
+  return {
+    success: frame("success"),
+    conflict: frame("conflict"),
+    missing: frame("missing"),
+    unavailable: frame("unavailable"),
+    "reply-loss": frame("reply-loss"),
+    "owner-loss": frame("owner-loss"),
+  };
+}
+
+export const orbitalFleetFrames = createOrbitalFleetFrames();
 
 export const orbitalFleetFrame = orbitalFleetFrames.success;

@@ -73,6 +73,38 @@ test("the compact phone scene keeps staggered copies above the base and agents b
   }
 });
 
+test("desktop home copies clear the owner heading and Agent 1 captions stay close to its roofline", () => {
+  for (const { value } of orbitalScenarios) {
+    for (let stage = 0; stage < orbitalScenarioSteps(value).length; stage++) {
+      const frame = orbitalFleetFrames[value](1.37, stage, false);
+      const label = (id: string) =>
+        frame.labels.find((item) => item.id === id)!;
+      const groupGap = label("owner-title").y - label("home-station-version").y;
+      assert.ok(
+        groupGap >= 40,
+        `${value}/${stage}: home copies need a separate gutter above the owner heading (${groupGap.toFixed(2)})`,
+      );
+      const stationTop = Math.min(
+        ...frame.paths
+          .filter(
+            (path) =>
+              path.id.startsWith("worker-station-1-") && path.opacity > 0.05,
+          )
+          .flatMap((path) => vertices(path.d).map(([, y]) => y)),
+      );
+      const name = label("worker-1-name"),
+        status = label("worker-1-edit");
+      const captionGap = stationTop - status.y;
+      assert.ok(
+        captionGap >= 16 && captionGap <= 24,
+        `${value}/${stage}: Agent 1 status-to-hardware gap is ${captionGap.toFixed(2)}`,
+      );
+      assert.equal(name.x, status.x);
+      assert.equal(status.y - name.y, 28, "move the caption pair together");
+    }
+  }
+});
+
 test("mobile ships retain one size from their launch bays through travel and docking", () => {
   const panelArea = (selection: number, index: number) => {
     const frame = orbitalFleetFrame(0, selection, true);
